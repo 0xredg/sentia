@@ -20,6 +20,7 @@ Use this wiki to centralize:
 - [Hackathon Strategy](./hackathon-strategy.md)
 - [Submission Checklist](./submission-checklist.md)
 - [Pitch Outline](./pitch-outline.md)
+- [Team](./team.md)
 
 ## Writing principles
 
