@@ -6,23 +6,22 @@ We combine deep engineering execution, product craft, and business development t
 
 ---
 
-## Victor Forgeoux — Engineering & Web3
+## Victor Forgeoux — Engineering & Product
 
-**Background:** Ex-Ledger engineer, recently left to build full-time in web3.
+**Background:** Ex-Ledger Product Manager, recently left to build full-time in web3.
 
 **Highlights:**
-- Shipped Ledger Flex, Ledger's secure touchscreen hardware wallet, from launch to market
-- Engineering background from Polytech Angers with a focus on building real products
+- Engineering background with a focus on building real products
 - Deep hands-on experience across blockchain integrations, hardware-software interfaces, and crypto UX
-- Based in Paris, plugged into the European web3 builder ecosystem
+- Plugged into the web3 builder ecosystem
 
 **LinkedIn:** [victor-forgeoux](https://www.linkedin.com/in/victor-forgeoux/)
 
 ---
 
-## Arnaud Leproux — Product
+##  Livio Aït-Ali — Product
 
-**Background:** Still leading product at Ledger, bringing years of product strategy and execution from one of crypto's most user-sensitive environments.
+**Background:** Still leading product at Ledger for Ledger Wallet, bringing years of product strategy and execution from one of crypto's most user-sensitive environments.
 
 **Highlights:**
 - Proven track record shipping products in high-stakes security and fintech contexts
@@ -33,7 +32,7 @@ We combine deep engineering execution, product craft, and business development t
 
 ---
 
-## Livio Aitali — Business & Operations
+## Arnaud Leproux — Business & Operations
 
 **Background:** Still at Ledger, driving business development and go-to-market execution.
 
@@ -53,7 +52,7 @@ We are not a group of strangers who met for a hackathon. We have worked side by 
 That means:
 - **We ship.** We have launched products together under real pressure and real deadlines.
 - **We trust each other.** We know who owns what and how we make decisions.
-- **We cover the full stack.** Victor brings the technical depth to build fast and securely. Arnaud ensures what we build actually solves a problem. Livio makes sure the right people hear about it and the business model works.
+- **We cover the full stack.** Victor brings the technical depth to build fast and securely. Livio ensures what we build actually solves a problem. Arnaud makes sure the right people hear about it and the business model works.
 
 Our shared history at Ledger taught us how to build for mainstream users who do not care about the technology underneath — they just want something that works, safely.
 
@@ -63,7 +62,7 @@ Our shared history at Ledger taught us how to build for mainstream users who do 
 
 We are already building together outside of Sentia.
 
-[Hyperbullets](https://hyperbullets.com) is a mobile-first app designed to make trading on Hyperliquid and Polymarket feel intuitive and accessible. It is a user-friendly interface for on-chain derivatives and prediction markets, built with the same philosophy we bring to Sentia: real humans, real value, zero friction.
+[Hyperbullets](https://hyperbullets.com) is a mobile-first app designed to make trading on Hyperliquid and Polymarket feel intuitive and accessible. It is a user-friendly interface for on-chain derivatives and prediction markets, built with the same philosophy we bring to Sentia: real value, zero friction.
 
 Hyperbullets proves we can execute as a team across engineering, product design, and growth — and that we understand the web3 user deeply enough to build tools they actually want to use.
 
@@ -72,6 +71,6 @@ Hyperbullets proves we can execute as a team across engineering, product design,
 ## Why This Team Wins
 
 - **Proven working relationship:** 3+ years at Ledger means we have already survived hard problems together.
-- **Complementary skills:** Engineering, product, and business are covered by people who respect each other's expertise.
+- **Complementary skills:** Engineering, Product, and Business are covered by people who respect each other's expertise.
 - **Web3-native:** We have built inside the industry, not adjacent to it. We understand users, wallets, transactions, and the urgency of real-time crypto products.
 - **Already executing:** Hyperbullets is live. We do not just ideate — we ship.
