@@ -2,7 +2,7 @@
 
 Sentia is built by a tight-knit team with 3+ years of shared history at Ledger, one of the most recognized brands in crypto security and hardware.
 
-We combine deep product craft, blockchain execution, and business development to ship products that real users want.
+We combine deep product craft and business development to ship products that real users want.
 
 ---
 
@@ -11,11 +11,9 @@ We combine deep product craft, blockchain execution, and business development to
 **Background:** Ex-Ledger Product Manager, recently left to build full-time in web3.
 
 **Highlights:**
-- Managed the integration, validation, and maintenance of 200+ blockchain applications on Ledger devices, securing 20% of the world's crypto assets
-- Defined detailed product specifications for Ledger Wallet and Device apps, coordinating engineering, design, security, and external blockchain foundations
-- Built frameworks to scale blockchain integrations, aligning technical capabilities with market demand while enforcing Ledger's rigorous security standards
-- Drove initiatives to streamline workflows and prioritize backlogs, cutting time-to-market for internal projects
-- Managed external partnerships to support ecosystem growth and developer adoption
+- Engineering background with a focus on building real products
+- Deep hands-on experience across blockchain integrations, hardware-software interfaces, and crypto UX
+- Plugged into the web3 builder ecosystem
 
 **LinkedIn:** [victor-forgeoux](https://www.linkedin.com/in/victor-forgeoux/)
 
@@ -26,12 +24,9 @@ We combine deep product craft, blockchain execution, and business development to
 **Background:** Product Manager Blockchain Integration at Ledger.
 
 **Highlights:**
-- Leads the integration of coins into Ledger Live, securing 20% of the total crypto market cap
-- Drives end-to-end execution of blockchain support strategy: coin and token support, staking, and swapping
-- Facilitates and coordinates blockchain integration with 30 developers across 4 external development teams
-- Creates detailed, technical product specifications for integrations such as Solana SPL, Hedera, Sui, Aptos, Cardano, Ton, Polkadot, and Near
-- Manages day-to-day product and business relationships with over 50 partners
-- Initiates and negotiates business deals with top 50 crypto foundations, generating $1.5M in revenue and over $800k in ARR
+- Proven track record shipping products in high-stakes security and fintech contexts
+- Strong intuition for turning complex technology into simple user flows
+- Experience balancing user needs, regulatory constraints, and technical feasibility
 
 **LinkedIn:** [livio-aitali](https://www.linkedin.com/in/livio-aitali/)
 
@@ -42,12 +37,9 @@ We combine deep product craft, blockchain execution, and business development to
 **Background:** Head of Business Development & Strategy for Ledger's Trading business line — one of the company's fastest-growing revenue streams.
 
 **Highlights:**
-- Built Ledger's Trading business line from concept to one of Ledger's fastest-growing revenue streams
-- Grew Trading revenue by 4x and trade volume by 5x in under 3 years
-- Secured 10+ strategic partnerships with tier-1 DeFi protocols: NearIntent, Uniswap, 1inch, Paraswap, Li.Fi, Thorchain, XO Swap
-- Led the transition from a centralized swap model to a decentralized multi-provider marketplace
-- Represented Ledger at 10+ industry events (EthCC, Consensus), strengthening brand presence in the DeFi ecosystem
-- Acts as strategic advisor to C-level on market trends, growth vectors, and partnership pipeline
+- Deep experience in partnerships, growth, and operational scaling within crypto
+- Understands how to navigate institutional relationships and close commercial opportunities
+- Strong connector between product vision and market reality
 
 **LinkedIn:** [arnaud-leproux](https://www.linkedin.com/in/arnaud-leproux/)
 
