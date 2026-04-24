@@ -18,6 +18,7 @@ Use this wiki to centralize:
 - [Project Vision](./project-vision.md)
 - [World Build Hackathon Context](./world-build-hackathon-context.md)
 - [Hackathon Strategy](./hackathon-strategy.md)
+- [Architecture](./architecture/README.md)
 - [Submission Checklist](./submission-checklist.md)
 - [Pitch Outline](./pitch-outline.md)
 - [Team](./team.md)
