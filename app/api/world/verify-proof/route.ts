@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
     })
     .eq("id", currentUser.user.id)
     .select(
-      "id, wallet_address, world_username, display_name, avatar_url, verification_status, verified_at",
+      "id, wallet_address, world_username, display_name, avatar_url, verification_status, verified_at, builder_access_status, builder_access_granted_at",
     )
     .single();
 

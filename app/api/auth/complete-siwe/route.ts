@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     const { data: existingUser, error: existingUserError } = await supabase
       .from("users")
       .select(
-        "id, world_username, display_name, avatar_url, verification_status, verified_at",
+        "id, world_username, display_name, avatar_url, verification_status, verified_at, builder_access_status, builder_access_granted_at",
       )
       .eq("wallet_address", walletAddress)
       .maybeSingle();
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
         { onConflict: "wallet_address" },
       )
       .select(
-        "id, wallet_address, world_username, display_name, avatar_url, verification_status, verified_at",
+        "id, wallet_address, world_username, display_name, avatar_url, verification_status, verified_at, builder_access_status, builder_access_granted_at",
       )
       .single();
 

@@ -82,6 +82,8 @@ type ProfileUser = {
   avatar_url: string | null;
   verification_status: "unverified" | "verified" | "blocked";
   verified_at: string | null;
+  builder_access_status: "none" | "granted";
+  builder_access_granted_at: string | null;
 };
 
 type WorldConfig = {
@@ -545,6 +547,12 @@ function FeedPanel({
     });
   }, []);
 
+  const scrollFeedToStart = useCallback(() => {
+    window.requestAnimationFrame(() => {
+      feedRef.current?.scrollTo({ top: 0, behavior: "auto" });
+    });
+  }, []);
+
   const loadFeedTasks = useCallback(async () => {
     setIsLoading(true);
     setFeedError(null);
@@ -706,6 +714,7 @@ function FeedPanel({
         setFeedError(
           error instanceof Error ? error.message : "Could not submit answer.",
         );
+        scrollFeedToStart();
         const nextSubmittedTaskIds = { ...submittedTaskIdsRef.current };
         delete nextSubmittedTaskIds[task.id];
         submittedTaskIdsRef.current = nextSubmittedTaskIds;
@@ -725,7 +734,13 @@ function FeedPanel({
         });
       }
     },
-    [loadAvailableBalance, onEarningsChanged, removeTask, scrollToFeedItem],
+    [
+      loadAvailableBalance,
+      onEarningsChanged,
+      removeTask,
+      scrollFeedToStart,
+      scrollToFeedItem,
+    ],
   );
 
   const submitTaskIfAnswered = useCallback(
@@ -1222,6 +1237,7 @@ function ProfilePanel({
   onLogout: () => void;
 }) {
   const isVerified = user?.verification_status === "verified";
+  const hasBuilderAccess = user?.builder_access_status === "granted";
   const displayName =
     user?.world_username ??
     user?.display_name ??
@@ -1268,10 +1284,12 @@ function ProfilePanel({
           {user
             ? isVerified
               ? "Verified human"
-              : "Identity not verified yet"
+              : hasBuilderAccess
+                ? "Identity not verified yet"
+                : "Identity not verified yet"
             : isMiniKitInitializing
               ? "Connecting to World App..."
-            : "Connect your World wallet to start"}
+              : "Connect your World wallet to start"}
         </p>
       </div>
 
@@ -1281,14 +1299,23 @@ function ProfilePanel({
           Verified
         </div>
       ) : user ? (
-        <button
-          type="button"
-          className="primary-action"
-          disabled={isBusy}
-          onClick={onVerify}
-        >
-          {status === "verifying" ? "Verifying..." : "Verify identity"}
-        </button>
+        <div className="profile-actions">
+          {hasBuilderAccess ? (
+            <div className="builder-status" role="status">
+              <span aria-hidden="true">✓</span>
+              World3 hacker
+            </div>
+          ) : null}
+
+          <button
+            type="button"
+            className="primary-action"
+            disabled={isBusy}
+            onClick={onVerify}
+          >
+            {status === "verifying" ? "Verifying..." : "Verify identity"}
+          </button>
+        </div>
       ) : (
         <button
           type="button"

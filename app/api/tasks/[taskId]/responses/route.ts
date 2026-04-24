@@ -46,7 +46,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
     );
   }
 
-  if (currentUser.user.verification_status !== "verified") {
+  const hasHumanOrBuilderAccess =
+    currentUser.user.verification_status === "verified" ||
+    currentUser.user.builder_access_status === "granted";
+
+  if (!hasHumanOrBuilderAccess) {
     return NextResponse.json(
       { error: "verification_required" },
       { status: 403 },

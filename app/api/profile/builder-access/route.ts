@@ -41,13 +41,13 @@ export async function POST(request: NextRequest) {
   const { data: user, error } = await supabase
     .from("users")
     .update({
-      verification_status: "verified",
-      verified_at: new Date().toISOString(),
+      builder_access_status: "granted",
+      builder_access_granted_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
     .eq("id", currentUser.user.id)
     .select(
-      "id, wallet_address, world_username, display_name, avatar_url, verification_status, verified_at",
+      "id, wallet_address, world_username, display_name, avatar_url, verification_status, verified_at, builder_access_status, builder_access_granted_at",
     )
     .single();
 
