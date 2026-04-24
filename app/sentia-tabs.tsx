@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   IDKitRequestWidget,
   orbLegacy,
@@ -15,6 +15,7 @@ import {
 } from "@/lib/constants";
 
 const tabs = ["Feed", "Earnings", "Profile"] as const;
+const feedCards = Array.from({ length: 10 }, (_, index) => index + 1);
 
 type Tab = (typeof tabs)[number];
 
@@ -312,12 +313,12 @@ export function SentiaTabs() {
     setStatus("idle");
   }, []);
 
-  const title = activeTab;
-
   return (
-    <main className="app-shell">
+    <main className="app-shell" data-active-tab={activeTab}>
       <section className="tab-panel" aria-labelledby="active-tab-title">
-        {activeTab === "Profile" ? (
+        {activeTab === "Feed" ? (
+          <FeedPanel />
+        ) : activeTab === "Profile" ? (
           <ProfilePanel
             user={user}
             previewProfile={previewProfile}
@@ -331,7 +332,7 @@ export function SentiaTabs() {
         ) : (
           <>
             <p className="eyebrow">Sentia</p>
-            <h1 id="active-tab-title">{title}</h1>
+            <h1 id="active-tab-title">Earnings</h1>
           </>
         )}
       </section>
@@ -371,6 +372,41 @@ export function SentiaTabs() {
         />
       ) : null}
     </main>
+  );
+}
+
+function FeedPanel() {
+  const feedRef = useRef<HTMLDivElement>(null);
+
+  const scrollToStart = useCallback(() => {
+    feedRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  return (
+    <div className="feed-panel" ref={feedRef}>
+      <h1 id="active-tab-title" className="sr-only">
+        Feed
+      </h1>
+
+      {feedCards.map((cardNumber) => (
+        <article className="feed-card" key={cardNumber}>
+          <span>{cardNumber}</span>
+        </article>
+      ))}
+
+      <article className="feed-card feed-card-end">
+        <div className="feed-end-content">
+          <p>End of feed</p>
+          <button
+            type="button"
+            className="primary-action"
+            onClick={scrollToStart}
+          >
+            Back to start
+          </button>
+        </div>
+      </article>
+    </div>
   );
 }
 
