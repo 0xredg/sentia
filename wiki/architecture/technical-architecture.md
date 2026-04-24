@@ -18,6 +18,7 @@ Sentia uses Next.js for both the Mini App frontend and the server routes that mu
 ## Frontend Responsibilities
 
 - Render the three-tab mobile UI: Feed, Earnings, Profile.
+- Render Feed cards from task data returned by server routes.
 - Initialize MiniKit with `MiniKitProvider`.
 - Detect whether the app is running inside World App with `MiniKit.isInstalled()`.
 - Start Wallet Auth when a wallet-linked session is required.
@@ -38,6 +39,7 @@ Sentia uses Next.js for both the Mini App frontend and the server routes that mu
 ## Supabase Responsibilities
 
 - Store users, verification records, tasks, responses, earnings, payouts, and treasury events.
+- Store task metadata and relative paths to static Feed card images.
 - Enforce uniqueness constraints for one response per user per task.
 - Enforce uniqueness for World ID proof replay protection.
 - Provide read APIs for mobile screens.
@@ -57,6 +59,14 @@ Initial server routes:
 - `POST /api/payouts/run`: protected admin/job endpoint to process pending payouts.
 
 Protected routes must identify the current user from a server-verified session, not from a client-submitted wallet address alone.
+
+## Feed Demo Assets
+
+Hackathon Feed card images are versioned in the repo and served by Next.js from `public/demo/feed-cards/images`.
+
+Supabase does not store image blobs. `tasks.input_payload.image_path` stores the relative path used by the frontend, for example `/demo/feed-cards/images/1_ebay.png`.
+
+`demo/feed-cards/feed-card-examples.csv` remains the source catalogue for future demo tasks. Only rows with existing image assets should be seeded into `tasks`.
 
 ## Verification Data Flow
 

@@ -67,7 +67,9 @@ button {
 
 .feed-panel {
   width: 100%;
+  max-width: 430px;
   height: 100dvh;
+  margin: 0 auto;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior-y: contain;
@@ -82,56 +84,136 @@ button {
 
 .feed-card {
   width: 100%;
-  min-height: calc(100dvh - var(--tab-bar-space));
+  height: 100dvh;
+  min-height: 0;
   display: grid;
-  place-items: center;
-  padding: max(24px, env(safe-area-inset-top)) 24px 24px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  padding: max(18px, env(safe-area-inset-top)) 16px var(--tab-bar-space);
   scroll-snap-align: start;
   scroll-snap-stop: always;
-  text-align: center;
+  background: #f7f7f4;
+  text-align: left;
 }
 
-.feed-card span {
+.feed-card-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 46px;
+}
+
+.feed-card-header p {
+  margin: 0;
   color: var(--text);
-  font-size: clamp(7rem, 38vw, 15rem);
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+
+.feed-card-header span {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.feed-card-logo {
+  width: 42px;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.95rem;
   font-weight: 900;
-  line-height: 0.9;
+  box-shadow: 0 10px 28px rgb(0 0 0 / 8%);
+}
+
+.feed-card-image-wrap {
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 16px 40px rgb(0 0 0 / 8%);
+}
+
+.feed-card-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.feed-card-prompt {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  box-shadow: 0 14px 34px rgb(0 0 0 / 8%);
+  backdrop-filter: blur(14px);
+}
+
+.feed-card-prompt p {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(1.15rem, 5vw, 1.55rem);
+  font-weight: 900;
+  line-height: 1.1;
   letter-spacing: 0;
 }
 
-.feed-card:nth-of-type(4n + 1) {
-  background: #f7f7f4;
+.feed-answer-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.feed-card:nth-of-type(4n + 2) {
-  background: #eef4ed;
+.feed-answer-button {
+  min-width: 54px;
+  min-height: 44px;
+  display: inline-flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--active);
+  color: var(--active-text);
+  font-size: 0.96rem;
+  font-weight: 900;
+  letter-spacing: 0;
 }
 
-.feed-card:nth-of-type(4n + 3) {
-  background: #f4f0e6;
+.feed-answer-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
-.feed-card:nth-of-type(4n + 4) {
-  background: #edf1f7;
-}
-
-.feed-card-end {
-  padding-bottom: 32px;
-}
-
-.feed-end-content {
-  width: min(100%, 320px);
+.feed-status-card {
   display: grid;
-  justify-items: center;
-  gap: 18px;
+  place-items: center;
+  text-align: center;
 }
 
-.feed-end-content p {
+.feed-status-card p {
   margin: 0;
   color: var(--muted);
   font-size: 1rem;
   font-weight: 800;
-  letter-spacing: 0;
+}
+
+.feed-loop-sentinel {
+  height: 100dvh;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  pointer-events: none;
 }
 
 .profile-panel {

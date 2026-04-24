@@ -15,9 +15,28 @@ import {
 } from "@/lib/constants";
 
 const tabs = ["Feed", "Earnings", "Profile"] as const;
-const feedCards = Array.from({ length: 10 }, (_, index) => index + 1);
 
 type Tab = (typeof tabs)[number];
+
+type FeedTask = {
+  id: string;
+  requesterName: string;
+  prompt: string;
+  taskType:
+    | "sentiment_judgment"
+    | "content_safety"
+    | "qualitative_feedback"
+    | "one_human_decision";
+  imagePath: string;
+  responseType:
+    | "thumbs"
+    | "binary"
+    | "choice_number"
+    | "choice_text"
+    | "rating"
+    | "emoji";
+  responseOptions: string[];
+};
 
 type ProfileUser = {
   id: string;
@@ -377,10 +396,80 @@ export function SentiaTabs() {
 
 function FeedPanel() {
   const feedRef = useRef<HTMLDivElement>(null);
+  const loopRef = useRef<HTMLDivElement>(null);
+  const [tasks, setTasks] = useState<FeedTask[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [feedError, setFeedError] = useState<string | null>(null);
 
   const scrollToStart = useCallback(() => {
-    feedRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    feedRef.current?.scrollTo({ top: 0, behavior: "auto" });
   }, []);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadFeedTasks() {
+      setIsLoading(true);
+      setFeedError(null);
+
+      try {
+        const response = await fetch("/api/tasks/feed");
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error ?? "Could not load feed tasks.");
+        }
+
+        if (!isCancelled) {
+          setTasks(data.tasks ?? []);
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          setFeedError(
+            error instanceof Error ? error.message : "Could not load feed tasks.",
+          );
+          setTasks([]);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadFeedTasks();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const feed = feedRef.current;
+    const loopSentinel = loopRef.current;
+
+    if (!feed || !loopSentinel || tasks.length === 0) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          scrollToStart();
+        }
+      },
+      {
+        root: feed,
+        threshold: 0.8,
+      },
+    );
+
+    observer.observe(loopSentinel);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [scrollToStart, tasks.length]);
 
   return (
     <div className="feed-panel" ref={feedRef}>
@@ -388,26 +477,89 @@ function FeedPanel() {
         Feed
       </h1>
 
-      {feedCards.map((cardNumber) => (
-        <article className="feed-card" key={cardNumber}>
-          <span>{cardNumber}</span>
-        </article>
-      ))}
+      {isLoading ? (
+        <FeedStatusCard message="Loading feed..." />
+      ) : feedError ? (
+        <FeedStatusCard message={feedError} />
+      ) : tasks.length === 0 ? (
+        <FeedStatusCard message="No open tasks yet." />
+      ) : (
+        <>
+          {tasks.map((task) => (
+            <FeedTaskCard key={task.id} task={task} />
+          ))}
 
-      <article className="feed-card feed-card-end">
-        <div className="feed-end-content">
-          <p>End of feed</p>
-          <button
-            type="button"
-            className="primary-action"
-            onClick={scrollToStart}
-          >
-            Back to start
-          </button>
-        </div>
-      </article>
+          <div
+            ref={loopRef}
+            className="feed-loop-sentinel"
+            aria-hidden="true"
+          />
+        </>
+      )}
     </div>
   );
+}
+
+function FeedStatusCard({ message }: { message: string }) {
+  return (
+    <article className="feed-card feed-status-card">
+      <p>{message}</p>
+    </article>
+  );
+}
+
+function FeedTaskCard({ task }: { task: FeedTask }) {
+  const requesterInitial = task.requesterName[0]?.toUpperCase() ?? "S";
+
+  return (
+    <article className="feed-card feed-task-card">
+      <header className="feed-card-header">
+        <p>
+          <span>From:</span> {task.requesterName}
+        </p>
+        <div className="feed-card-logo" aria-hidden="true">
+          {requesterInitial}
+        </div>
+      </header>
+
+      <div className="feed-card-image-wrap">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={task.imagePath} alt="" className="feed-card-image" />
+      </div>
+
+      <section className="feed-card-prompt" aria-label="Task question">
+        <p>{task.prompt}</p>
+
+        <div className="feed-answer-buttons">
+          {getVisibleResponseOptions(task).map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              className="feed-answer-button"
+              disabled
+              aria-disabled="true"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </section>
+    </article>
+  );
+}
+
+function getVisibleResponseOptions(task: FeedTask) {
+  if (task.responseType === "thumbs") {
+    return task.responseOptions.map((option) => ({
+      value: option,
+      label: option === "thumbs_down" ? "👎" : "👍",
+    }));
+  }
+
+  return task.responseOptions.map((option) => ({
+    value: option,
+    label: option,
+  }));
 }
 
 function ProfilePanel({
