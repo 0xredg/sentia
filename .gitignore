@@ -11,6 +11,9 @@ node_modules/
 out/
 dist/
 
+# Supabase local metadata
+supabase/.temp/
+
 # Logs
 *.log
 npm-debug.log*
