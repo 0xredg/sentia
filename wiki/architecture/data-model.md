@@ -59,6 +59,8 @@ Represents work available in the Feed.
 Fields:
 
 - `id uuid primary key`
+- `demo_source_id integer unique`
+- `requester_name text not null`
 - `title text not null`
 - `prompt text not null`
 - `task_type text not null`
@@ -71,6 +73,16 @@ Fields:
 - `expires_at timestamptz`
 - `created_at timestamptz not null default now()`
 - `updated_at timestamptz not null default now()`
+
+Feed card conventions:
+
+- `requester_name` is the company/app shown in the card "From" area.
+- `demo_source_id` links seeded hackathon demo rows back to `demo/feed-cards/feed-card-examples.csv`.
+- `prompt` is the user-facing question or request shown on the card.
+- `input_payload.image_path` stores a relative static asset path such as `/demo/feed-cards/images/1_ebay.png`.
+- `input_payload.company`, `content_idea`, and `why_human` store demo context for operators and future tooling.
+- `response_schema.type` stores the control type, such as `thumbs`, `binary`, `choice_number`, `choice_text`, or `rating`.
+- `response_schema.options` stores the ordered answer options rendered as buttons.
 
 Allowed `status` values:
 
@@ -209,6 +221,8 @@ create table users (
 
 create table tasks (
   id uuid primary key default gen_random_uuid(),
+  demo_source_id integer unique,
+  requester_name text not null,
   title text not null,
   prompt text not null,
   task_type text not null,

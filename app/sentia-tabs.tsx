@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   IDKitRequestWidget,
   orbLegacy,
@@ -15,8 +21,38 @@ import {
 } from "@/lib/constants";
 
 const tabs = ["Feed", "Earnings", "Profile"] as const;
+const mockRewardAmount = 0.01;
+const companyLogoPaths: Record<string, string> = {
+  ebay: "/demo/feed-cards/company-profile-pics/ebay.png",
+  mistral: "/demo/feed-cards/company-profile-pics/mistral.png",
+  mistralai: "/demo/feed-cards/company-profile-pics/mistral.png",
+  notion: "/demo/feed-cards/company-profile-pics/notion.png",
+  openai: "/demo/feed-cards/company-profile-pics/openai.png",
+  reddit: "/demo/feed-cards/company-profile-pics/reddit.png",
+  stripe: "/demo/feed-cards/company-profile-pics/stripe.png",
+};
 
 type Tab = (typeof tabs)[number];
+
+type FeedTask = {
+  id: string;
+  requesterName: string;
+  prompt: string;
+  taskType:
+    | "sentiment_judgment"
+    | "content_safety"
+    | "qualitative_feedback"
+    | "one_human_decision";
+  imagePath: string;
+  responseType:
+    | "thumbs"
+    | "binary"
+    | "choice_number"
+    | "choice_text"
+    | "rating"
+    | "emoji";
+  responseOptions: string[];
+};
 
 type ProfileUser = {
   id: string;
@@ -312,12 +348,12 @@ export function SentiaTabs() {
     setStatus("idle");
   }, []);
 
-  const title = activeTab;
-
   return (
-    <main className="app-shell">
+    <main className="app-shell" data-active-tab={activeTab}>
       <section className="tab-panel" aria-labelledby="active-tab-title">
-        {activeTab === "Profile" ? (
+        {activeTab === "Feed" ? (
+          <FeedPanel />
+        ) : activeTab === "Profile" ? (
           <ProfilePanel
             user={user}
             previewProfile={previewProfile}
@@ -331,7 +367,7 @@ export function SentiaTabs() {
         ) : (
           <>
             <p className="eyebrow">Sentia</p>
-            <h1 id="active-tab-title">{title}</h1>
+            <h1 id="active-tab-title">Earnings</h1>
           </>
         )}
       </section>
@@ -372,6 +408,332 @@ export function SentiaTabs() {
       ) : null}
     </main>
   );
+}
+
+function FeedPanel() {
+  const feedRef = useRef<HTMLDivElement>(null);
+  const loopRef = useRef<HTMLDivElement>(null);
+  const activeTaskIdRef = useRef<string | null>(null);
+  const selectedAnswersRef = useRef<Record<string, string | null>>({});
+  const [tasks, setTasks] = useState<FeedTask[]>([]);
+  const [selectedAnswers, setSelectedAnswers] = useState<
+    Record<string, string | null>
+  >({});
+  const [mockBalance, setMockBalance] = useState(0);
+  const [balanceBump, setBalanceBump] = useState<{
+    taskId: string;
+    animationKey: number;
+  } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [feedError, setFeedError] = useState<string | null>(null);
+
+  const scrollToStart = useCallback(() => {
+    feedRef.current?.scrollTo({ top: 0, behavior: "auto" });
+  }, []);
+
+  const toggleAnswer = useCallback((taskId: string, answer: string) => {
+    setSelectedAnswers((currentAnswers) => {
+      const nextAnswer =
+        currentAnswers[taskId] === answer ? null : answer;
+      return {
+        ...currentAnswers,
+        [taskId]: nextAnswer,
+      };
+    });
+  }, []);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadFeedTasks() {
+      setIsLoading(true);
+      setFeedError(null);
+
+      try {
+        const response = await fetch("/api/tasks/feed");
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error ?? "Could not load feed tasks.");
+        }
+
+        if (!isCancelled) {
+          setTasks(data.tasks ?? []);
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          setFeedError(
+            error instanceof Error ? error.message : "Could not load feed tasks.",
+          );
+          setTasks([]);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadFeedTasks();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const feed = feedRef.current;
+    const loopSentinel = loopRef.current;
+
+    if (!feed || !loopSentinel || tasks.length === 0) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          scrollToStart();
+        }
+      },
+      {
+        root: feed,
+        threshold: 0.8,
+      },
+    );
+
+    observer.observe(loopSentinel);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [scrollToStart, tasks.length]);
+
+  useEffect(() => {
+    selectedAnswersRef.current = selectedAnswers;
+  }, [selectedAnswers]);
+
+  useEffect(() => {
+    const feed = feedRef.current;
+
+    if (!feed || tasks.length === 0) {
+      return;
+    }
+
+    const taskCards = Array.from(
+      feed.querySelectorAll<HTMLElement>("[data-feed-task-id]"),
+    );
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const activeEntry = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((first, second) => {
+            return second.intersectionRatio - first.intersectionRatio;
+          })[0];
+
+        const nextTaskId = activeEntry?.target.getAttribute("data-feed-task-id");
+
+        if (!nextTaskId || activeTaskIdRef.current === nextTaskId) {
+          return;
+        }
+
+        const previousTaskId = activeTaskIdRef.current;
+        activeTaskIdRef.current = nextTaskId;
+
+        if (!previousTaskId || !selectedAnswersRef.current[previousTaskId]) {
+          return;
+        }
+
+        const previousTaskIndex = tasks.findIndex(
+          (task) => task.id === previousTaskId,
+        );
+        const nextTaskIndex = tasks.findIndex((task) => task.id === nextTaskId);
+
+        if (nextTaskIndex <= previousTaskIndex) {
+          return;
+        }
+
+        setMockBalance((currentBalance) => currentBalance + mockRewardAmount);
+        setBalanceBump({
+          taskId: nextTaskId,
+          animationKey: Date.now(),
+        });
+      },
+      {
+        root: feed,
+        threshold: [0.65],
+      },
+    );
+
+    taskCards.forEach((card) => observer.observe(card));
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [tasks]);
+
+  useEffect(() => {
+    if (!balanceBump) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setBalanceBump(null);
+    }, 1100);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [balanceBump]);
+
+  return (
+    <div className="feed-shell">
+      <div className="feed-panel" ref={feedRef}>
+        <h1 id="active-tab-title" className="sr-only">
+          Feed
+        </h1>
+
+        {isLoading ? (
+          <FeedStatusCard message="Loading feed..." />
+        ) : feedError ? (
+          <FeedStatusCard message={feedError} />
+        ) : tasks.length === 0 ? (
+          <FeedStatusCard message="No open tasks yet." />
+        ) : (
+          <>
+            {tasks.map((task) => (
+              <FeedTaskCard
+                key={task.id}
+                task={task}
+                selectedAnswer={selectedAnswers[task.id] ?? null}
+                mockBalance={mockBalance}
+                balanceBumpKey={
+                  balanceBump?.taskId === task.id
+                    ? balanceBump.animationKey
+                    : null
+                }
+                onToggleAnswer={toggleAnswer}
+              />
+            ))}
+
+            <div
+              ref={loopRef}
+              className="feed-loop-sentinel"
+              aria-hidden="true"
+            />
+          </>
+        )}
+      </div>
+
+    </div>
+  );
+}
+
+function FeedStatusCard({ message }: { message: string }) {
+  return (
+    <article className="feed-card feed-status-card">
+      <p>{message}</p>
+    </article>
+  );
+}
+
+function FeedTaskCard({
+  task,
+  selectedAnswer,
+  mockBalance,
+  balanceBumpKey,
+  onToggleAnswer,
+}: {
+  task: FeedTask;
+  selectedAnswer: string | null;
+  mockBalance: number;
+  balanceBumpKey: number | null;
+  onToggleAnswer: (taskId: string, answer: string) => void;
+}) {
+  const requesterInitial = task.requesterName[0]?.toUpperCase() ?? "S";
+  const companyLogoPath = getCompanyLogoPath(task.requesterName);
+
+  return (
+    <article
+      className="feed-card feed-task-card"
+      data-feed-task-id={task.id}
+    >
+      <header className="feed-card-header">
+        <div className="feed-card-requester">
+          <p>
+            <span>From:</span>
+            <span className="feed-card-logo" aria-hidden="true">
+            {companyLogoPath ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={companyLogoPath} alt="" />
+            ) : (
+              requesterInitial
+            )}
+          </span>
+          </p>
+        </div>
+
+        <div className="feed-balance-wrap" aria-live="polite">
+          <div className="feed-balance-pill">{formatWldBalance(mockBalance)}</div>
+          {balanceBumpKey ? (
+            <span key={balanceBumpKey} className="feed-balance-bump">
+              +0.01
+            </span>
+          ) : null}
+        </div>
+      </header>
+
+      <div className="feed-card-image-wrap">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={task.imagePath} alt="" className="feed-card-image" />
+      </div>
+
+      <section className="feed-card-prompt" aria-label="Task question">
+        <p>{task.prompt}</p>
+
+        <div className="feed-answer-buttons">
+          {getVisibleResponseOptions(task).map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              className="feed-answer-button"
+              aria-pressed={selectedAnswer === option.value}
+              data-selected={selectedAnswer === option.value}
+              onClick={() => onToggleAnswer(task.id, option.value)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </section>
+    </article>
+  );
+}
+
+function getCompanyLogoPath(requesterName: string) {
+  const normalizedRequesterName = requesterName
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+
+  return companyLogoPaths[normalizedRequesterName] ?? null;
+}
+
+function formatWldBalance(balance: number) {
+  return `${balance.toFixed(2)} WLD`;
+}
+
+function getVisibleResponseOptions(task: FeedTask) {
+  if (task.responseType === "thumbs") {
+    return task.responseOptions.map((option) => ({
+      value: option,
+      label: option === "thumbs_down" ? "👎" : "👍",
+    }));
+  }
+
+  return task.responseOptions.map((option) => ({
+    value: option,
+    label: option,
+  }));
 }
 
 function ProfilePanel({

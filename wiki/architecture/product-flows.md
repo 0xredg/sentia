@@ -38,17 +38,26 @@ Failure states:
 ## Feed Task Completion
 
 1. Verified user opens Feed.
-2. Backend returns one active task at a time.
-3. User reviews the task and submits an answer.
-4. Backend validates:
+2. Backend returns one active open task from `tasks`.
+3. User reviews the task card image, requester, prompt, and answer options.
+4. User submits an answer.
+5. Backend validates:
    - user is verified
    - task is open
    - task is not expired
    - user has not already answered the task
    - answer matches the task schema
-5. Backend writes `task_responses`.
-6. Backend creates a pending `earnings_ledger` entry.
-7. Client advances to the next task and shows earned feedback only after backend success.
+6. Backend writes `task_responses`.
+7. Backend creates a pending `earnings_ledger` entry.
+8. Client advances to the next task and shows earned feedback only after backend success.
+
+Card rendering details:
+
+- The "From" area uses `tasks.requester_name`.
+- The image uses `tasks.input_payload.image_path`, which points to a static file served by the app.
+- The question uses `tasks.prompt`.
+- The answer buttons use `tasks.response_schema.type` and `tasks.response_schema.options`.
+- Detailed card UI styling is handled separately from the DB seed.
 
 Failure states:
 
