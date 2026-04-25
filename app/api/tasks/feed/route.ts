@@ -92,10 +92,11 @@ export async function GET() {
     let query = supabase
       .from("tasks")
       .select(
-        "id, requester_name, prompt, task_type, input_payload, response_schema, reward_amount, reward_token, demo_source_id, created_at",
+        "id, requester_name, prompt, task_type, input_payload, response_schema, reward_amount, reward_token, demo_source_id, demo_feed_order, created_at",
       )
       .eq("status", "open")
       .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+      .order("demo_feed_order", { ascending: true, nullsFirst: false })
       .order("demo_source_id", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: true });
 
