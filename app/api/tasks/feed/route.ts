@@ -70,9 +70,10 @@ export async function GET() {
     const { data, error } = await supabase
       .from("tasks")
       .select(
-        "id, requester_name, prompt, task_type, input_payload, response_schema, demo_source_id, created_at",
+        "id, requester_name, prompt, task_type, input_payload, response_schema, demo_source_id, demo_feed_order, created_at",
       )
       .eq("status", "open")
+      .order("demo_feed_order", { ascending: true, nullsFirst: false })
       .order("demo_source_id", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: true });
 
