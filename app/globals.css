@@ -2,19 +2,27 @@
   color-scheme: light;
   --background: #f7f7f4;
   --surface: #ffffff;
-  --text: #141414;
-  --muted: #70736f;
-  --line: #dedfd9;
-  --active: #141414;
+  --surface-raised: #fbfbf8;
+  --surface-glass: rgb(255 255 255 / 88%);
+  --text: #111111;
+  --muted: #6f6f68;
+  --line: rgb(17 17 17 / 12%);
+  --line-strong: rgb(17 17 17 / 28%);
+  --active: #111111;
   --active-text: #ffffff;
-  --success: #10843f;
-  --success-soft: #e5f5eb;
+  --success: #187a3c;
+  --success-soft: #e8f4ed;
   --danger: #a4372d;
   --danger-soft: #fff0ed;
-  --tab-bar-height: 66px;
-  --tab-bar-bottom: max(12px, env(safe-area-inset-bottom));
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  --font-display: Unbounded, var(--font-body);
+  --font-mono: "Space Mono", ui-monospace, SFMono-Regular, Menlo, Monaco,
+    Consolas, monospace;
+  --tab-bar-height: 74px;
+  --tab-bar-bottom: 0px;
   --tab-bar-space: calc(
-    var(--tab-bar-height) + var(--tab-bar-bottom) + 12px
+    var(--tab-bar-height) + env(safe-area-inset-bottom) + 32px
   );
 }
 
@@ -33,19 +41,26 @@ body {
 body {
   background: var(--background);
   color: var(--text);
-  font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
+  font-family: var(--font-body);
+  text-rendering: geometricPrecision;
+}
+
+button,
+input {
+  font: inherit;
 }
 
 button {
-  font: inherit;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .app-shell {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
+  background:
+    radial-gradient(circle at 50% -18%, rgb(17 17 17 / 6%), transparent 32%),
+    var(--background);
 }
 
 .tab-panel {
@@ -54,8 +69,8 @@ button {
   display: grid;
   place-items: center;
   align-content: center;
-  gap: 12px;
-  padding: max(24px, env(safe-area-inset-top)) 20px var(--tab-bar-space);
+  gap: 16px;
+  padding: max(24px, env(safe-area-inset-top)) 24px var(--tab-bar-space);
   text-align: center;
 }
 
@@ -76,6 +91,7 @@ button {
   scroll-snap-type: y mandatory;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  background: var(--background);
 }
 
 .feed-panel::-webkit-scrollbar {
@@ -89,11 +105,13 @@ button {
   min-height: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 12px;
-  padding: max(18px, env(safe-area-inset-top)) 16px var(--tab-bar-space);
+  gap: 16px;
+  padding: max(24px, env(safe-area-inset-top)) 16px var(--tab-bar-space);
   scroll-snap-align: start;
   scroll-snap-stop: always;
-  background: #f7f7f4;
+  background:
+    linear-gradient(180deg, rgb(17 17 17 / 3%), transparent 28%),
+    var(--background);
   text-align: left;
 }
 
@@ -102,7 +120,7 @@ button {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
-  min-height: 46px;
+  min-height: 48px;
 }
 
 .feed-card-requester {
@@ -116,28 +134,29 @@ button {
   align-items: center;
   gap: 8px;
   color: var(--text);
-  font-size: 1.05rem;
-  font-weight: 800;
-  letter-spacing: 0;
-  line-height: 1.2;
+  font-family: var(--font-mono);
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.25;
 }
 
 .feed-card-header span {
   color: var(--muted);
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .feed-card-header .feed-task-reward {
-  min-height: 28px;
+  min-height: 30px;
   display: inline-grid;
   place-items: center;
-  padding: 0 9px;
-  border: 1px solid color-mix(in srgb, var(--success) 24%, var(--line));
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--surface) 94%, var(--success-soft));
+  background: var(--success-soft);
   color: var(--success);
-  font-size: 0.78rem;
-  font-weight: 950;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
   white-space: nowrap;
 }
 
@@ -149,12 +168,12 @@ button {
   place-items: center;
   border: 1px solid var(--line);
   border-radius: 50%;
-  background: var(--surface);
+  background: var(--surface-raised);
   color: var(--text);
   overflow: hidden;
-  font-size: 0.82rem;
-  font-weight: 900;
-  box-shadow: 0 8px 22px rgb(0 0 0 / 8%);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
 }
 
 .feed-card-logo img {
@@ -175,15 +194,15 @@ button {
   display: inline-grid;
   place-items: center;
   padding: 0 12px;
-  border: 1px solid color-mix(in srgb, var(--success) 28%, var(--line));
+  border: 1px solid var(--line);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--surface) 92%, var(--success-soft));
-  color: var(--success);
-  font-size: 0.82rem;
-  font-weight: 950;
-  letter-spacing: 0;
+  background: var(--surface-glass);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
   white-space: nowrap;
-  box-shadow: 0 10px 26px rgb(0 0 0 / 9%);
 }
 
 .feed-balance-bump {
@@ -191,9 +210,10 @@ button {
   top: -18px;
   right: 4px;
   color: var(--success);
-  font-size: 0.82rem;
-  font-weight: 950;
-  letter-spacing: 0;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
   text-shadow: 0 1px 0 var(--surface);
   pointer-events: none;
   animation: balance-bump 920ms cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -205,8 +225,7 @@ button {
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--surface) 94%, var(--text));
-  box-shadow: 0 16px 40px rgb(0 0 0 / 8%);
+  background: var(--surface);
 }
 
 .feed-card-image {
@@ -223,18 +242,17 @@ button {
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--surface) 96%, transparent);
-  box-shadow: 0 14px 34px rgb(0 0 0 / 8%);
-  backdrop-filter: blur(14px);
+  background: var(--surface-glass);
+  backdrop-filter: blur(18px);
 }
 
 .feed-card-prompt p {
   margin: 0;
   color: var(--text);
-  font-size: clamp(1.15rem, 5vw, 1.55rem);
-  font-weight: 900;
-  line-height: 1.1;
-  letter-spacing: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.05rem, 4.7vw, 1.38rem);
+  font-weight: 600;
+  line-height: 1.08;
 }
 
 .feed-answer-buttons {
@@ -252,18 +270,16 @@ button {
   justify-content: center;
   padding: 0 12px;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
+  border-radius: 999px;
+  background: var(--surface-raised);
   color: var(--text);
   cursor: pointer;
-  font-size: 0.96rem;
-  font-weight: 900;
-  letter-spacing: 0;
-  box-shadow: 0 6px 18px rgb(0 0 0 / 6%);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 700;
   transition:
     background 160ms ease,
     border-color 160ms ease,
-    box-shadow 160ms ease,
     color 160ms ease,
     transform 160ms ease;
 }
@@ -272,18 +288,22 @@ button {
   transform: scale(0.98);
 }
 
-.feed-answer-button:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--success) 30%, transparent);
-  outline-offset: 2px;
+.feed-answer-button:focus-visible,
+.tab-button:focus-visible,
+.primary-action:focus-visible,
+.secondary-action:focus-visible,
+.logout-button:focus-visible,
+.mock-admin-close:focus-visible,
+.mock-admin-actions button:focus-visible,
+.builder-access-form input:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 3px;
 }
 
 .feed-answer-button[data-selected="true"] {
-  border-color: color-mix(in srgb, var(--success) 62%, var(--active));
+  border-color: var(--active);
   background: var(--active);
   color: var(--active-text);
-  box-shadow:
-    0 12px 28px rgb(0 0 0 / 16%),
-    0 0 0 3px color-mix(in srgb, var(--success) 18%, transparent);
   transform: scale(1.025);
 }
 
@@ -295,6 +315,8 @@ button {
 .feed-status-card {
   display: grid;
   place-items: center;
+  align-content: center;
+  gap: 16px;
   text-align: center;
 }
 
@@ -302,7 +324,7 @@ button {
   margin: 0;
   color: var(--muted);
   font-size: 1rem;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 @keyframes balance-bump {
@@ -344,25 +366,34 @@ button {
   }
 }
 
+.profile-panel,
+.earnings-panel {
+  width: min(100%, 430px);
+  text-align: center;
+}
+
 .profile-panel {
   position: relative;
-  width: min(100%, 420px);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 18px;
-  text-align: center;
 }
 
 .earnings-panel {
-  width: min(100%, 460px);
   display: grid;
   gap: 18px;
-  text-align: center;
 }
 
-.earnings-panel h1 {
-  font-size: clamp(2.1rem, 13vw, 3.6rem);
+.earnings-panel h1,
+h1 {
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: clamp(2.25rem, 13vw, 4.35rem);
+  font-weight: 400;
+  line-height: 0.98;
+  letter-spacing: 0;
 }
 
 .earnings-summary {
@@ -378,20 +409,22 @@ button {
   padding: 12px 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--surface);
-  box-shadow: 0 12px 30px rgb(0 0 0 / 7%);
+  background: var(--surface-raised);
 }
 
 .earnings-metric span {
   color: var(--muted);
-  font-size: 0.74rem;
-  font-weight: 800;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
   line-height: 1.2;
+  text-transform: uppercase;
 }
 
 .earnings-metric strong {
   color: var(--text);
-  font-size: 1.05rem;
+  font-family: var(--font-mono);
+  font-size: 0.98rem;
   line-height: 1.1;
 }
 
@@ -403,8 +436,11 @@ button {
 
 .paid-operations h2 {
   margin: 0;
-  font-size: 1rem;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.84rem;
   line-height: 1.2;
+  text-transform: uppercase;
 }
 
 .paid-operations ul {
@@ -424,16 +460,18 @@ button {
   padding: 0 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--surface);
-  font-size: 0.92rem;
-  font-weight: 800;
+  background: var(--surface-raised);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
 .paid-operations time,
 .earnings-muted {
   color: var(--muted);
-  font-size: 0.88rem;
-  font-weight: 700;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 400;
 }
 
 .earnings-muted {
@@ -445,16 +483,17 @@ button {
   position: absolute;
   top: 0;
   right: 0;
-  min-height: 36px;
-  padding: 0 11px;
+  min-height: 44px;
+  padding: 0 13px;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
+  border-radius: 999px;
+  background: transparent;
   color: var(--muted);
   cursor: pointer;
-  font-size: 0.82rem;
-  font-weight: 800;
-  letter-spacing: 0;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 @media (max-width: 380px) {
@@ -471,17 +510,11 @@ button {
 .eyebrow {
   margin: 0;
   color: var(--muted);
-  font-size: 0.82rem;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
   font-weight: 700;
-  letter-spacing: 0;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-}
-
-h1 {
-  margin: 0;
-  font-size: clamp(2.5rem, 18vw, 5rem);
-  line-height: 1;
-  letter-spacing: 0;
 }
 
 .profile-heading {
@@ -490,7 +523,7 @@ h1 {
 }
 
 .profile-heading h1 {
-  font-size: clamp(2.1rem, 13vw, 3.6rem);
+  font-size: clamp(2rem, 12vw, 3.25rem);
 }
 
 .profile-heading p,
@@ -509,12 +542,12 @@ h1 {
   justify-content: center;
   padding: 0 14px;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
+  border-radius: 999px;
+  background: var(--surface-raised);
   color: var(--text);
-  font-size: 0.92rem;
-  font-weight: 900;
-  box-shadow: 0 10px 24px rgb(0 0 0 / 6%);
+  font-family: var(--font-mono);
+  font-size: 0.84rem;
+  font-weight: 700;
 }
 
 .avatar {
@@ -525,11 +558,11 @@ h1 {
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 50%;
-  background: var(--surface);
+  background: var(--surface-raised);
   color: var(--text);
+  font-family: var(--font-display);
   font-size: 2rem;
-  font-weight: 800;
-  box-shadow: 0 16px 40px rgb(0 0 0 / 8%);
+  font-weight: 400;
 }
 
 .avatar img {
@@ -547,14 +580,15 @@ h1 {
   justify-content: center;
   gap: 8px;
   padding: 0 18px;
-  border-radius: 8px;
-  font-weight: 800;
-  letter-spacing: 0;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  font-weight: 700;
 }
 
 .primary-action {
   width: min(100%, 300px);
-  border: 0;
+  border: 1px solid var(--active);
   background: var(--active);
   color: var(--active-text);
   cursor: pointer;
@@ -562,8 +596,8 @@ h1 {
 
 .secondary-action {
   width: min(100%, 300px);
-  border: 1px solid var(--line);
-  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  background: transparent;
   color: var(--text);
   cursor: pointer;
 }
@@ -593,21 +627,20 @@ h1 {
   padding: 0 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--surface);
+  background: var(--surface-raised);
   color: var(--text);
   font: inherit;
-  font-weight: 700;
-  letter-spacing: 0;
+  font-weight: 600;
 }
 
-.builder-access-form input:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--success) 30%, transparent);
-  outline-offset: 2px;
+.builder-access-form input::placeholder {
+  color: var(--muted);
 }
 
 .verified-status {
+  border: 1px solid var(--line-strong);
   background: var(--success-soft);
-  color: var(--success);
+  color: var(--text);
 }
 
 .builder-status {
@@ -617,12 +650,13 @@ h1 {
   justify-content: center;
   gap: 8px;
   padding: 0 14px;
-  border: 1px solid color-mix(in srgb, var(--success) 26%, var(--line));
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--surface) 88%, var(--success-soft));
-  color: var(--success);
-  font-size: 0.92rem;
-  font-weight: 900;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  font-weight: 700;
 }
 
 .verified-status span,
@@ -632,15 +666,15 @@ h1 {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: var(--success);
-  color: #fff;
+  background: var(--text);
+  color: var(--background);
   font-size: 0.85rem;
 }
 
 .profile-error {
   width: 100%;
   padding: 12px 14px;
-  border: 1px solid color-mix(in srgb, var(--danger) 24%, transparent);
+  border: 1px solid rgb(255 138 122 / 46%);
   border-radius: 8px;
   background: var(--danger-soft);
   color: var(--danger);
@@ -653,8 +687,8 @@ h1 {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  padding: 16px;
-  background: rgb(0 0 0 / 34%);
+  padding: 16px 16px max(12px, env(safe-area-inset-bottom));
+  background: rgb(0 0 0 / 38%);
 }
 
 .mock-admin-sheet {
@@ -665,16 +699,17 @@ h1 {
   padding: 20px;
   border: 1px solid var(--line);
   border-radius: 8px 8px 0 0;
-  background: var(--surface);
+  background: var(--surface-raised);
   color: var(--text);
   text-align: left;
-  box-shadow: 0 -18px 48px rgb(0 0 0 / 18%);
 }
 
 .mock-admin-sheet h2 {
   margin: 0;
   padding-right: 64px;
+  font-family: var(--font-display);
   font-size: 1.05rem;
+  font-weight: 400;
   line-height: 1.2;
 }
 
@@ -682,16 +717,17 @@ h1 {
   position: absolute;
   top: 12px;
   right: 12px;
-  min-height: 34px;
-  padding: 0 10px;
+  min-height: 44px;
+  padding: 0 12px;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
+  border-radius: 999px;
+  background: transparent;
   color: var(--muted);
   cursor: pointer;
-  font: inherit;
-  font-size: 0.82rem;
-  font-weight: 800;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .mock-admin-actions {
@@ -701,13 +737,14 @@ h1 {
 
 .mock-admin-actions button {
   min-height: 46px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
   background: var(--active);
   color: var(--active-text);
   cursor: pointer;
   font: inherit;
-  font-weight: 900;
+  font-family: var(--font-mono);
+  font-weight: 700;
 }
 
 .mock-admin-close:disabled,
@@ -720,12 +757,12 @@ h1 {
 .mock-admin-error {
   margin: 0;
   font-size: 0.9rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.35;
 }
 
 .mock-admin-message {
-  color: var(--success);
+  color: var(--text);
 }
 
 .mock-admin-error {
@@ -745,41 +782,73 @@ h1 {
 
 .tab-bar {
   position: fixed;
-  right: 16px;
-  bottom: var(--tab-bar-bottom);
-  left: 16px;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 20;
+  width: 100%;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  max-width: 520px;
-  margin: 0 auto;
-  padding: 8px;
+  gap: 0;
   min-height: var(--tab-bar-height);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--surface) 94%, transparent);
-  box-shadow: 0 18px 50px rgb(0 0 0 / 10%);
-  backdrop-filter: blur(16px);
+  margin: 0;
+  padding: 6px 24px calc(12px + env(safe-area-inset-bottom));
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--surface-glass);
+  backdrop-filter: blur(20px);
 }
 
 .tab-button {
-  min-height: 48px;
+  position: relative;
+  min-width: 0;
+  min-height: 58px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 3px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 0;
   background: transparent;
   color: var(--muted);
   cursor: pointer;
-  font-size: 0.94rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
   font-weight: 700;
-  letter-spacing: 0;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.tab-button::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 18px;
+  height: 2px;
+  border-radius: 999px;
+  background: transparent;
+  transform: translateX(-50%);
 }
 
 .tab-button[data-active="true"] {
-  background: var(--active);
-  color: var(--active-text);
+  color: var(--text);
 }
 
-.tab-button:focus-visible {
-  outline: 3px solid #77a8ff;
-  outline-offset: 2px;
+.tab-button[data-active="true"]::after {
+  background: var(--text);
+}
+
+.tab-icon {
+  width: 21px;
+  height: 21px;
+  stroke-width: 2;
+}
+
+.tab-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

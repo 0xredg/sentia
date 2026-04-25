@@ -1,0 +1,7 @@
+interface:
+  display_name: "Sentia Mini App Design"
+  short_description: "World-compliant Sentia UI guidance"
+  default_prompt: "Use $sentia-miniapp-design to audit this Sentia Mini App screen for World compliance and brand fit."
+
+policy:
+  allow_implicit_invocation: true

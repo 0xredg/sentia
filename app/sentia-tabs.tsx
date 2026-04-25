@@ -21,8 +21,21 @@ import {
   WALLET_AUTH_STATEMENT,
 } from "@/lib/constants";
 import { isMockAdminEnabled, isMockAdminUser } from "@/lib/mock-admin";
+import {
+  ListChecks,
+  UserRound,
+  WalletCards,
+  type LucideIcon,
+} from "lucide-react";
 
 const tabs = ["Feed", "Earnings", "Profile"] as const;
+type Tab = (typeof tabs)[number];
+
+const tabItems: Record<Tab, { Icon: LucideIcon; label: string }> = {
+  Feed: { Icon: ListChecks, label: "Feed" },
+  Earnings: { Icon: WalletCards, label: "Earn" },
+  Profile: { Icon: UserRound, label: "Profile" },
+};
 const companyLogoPaths: Record<string, string> = {
   adahealth: "/demo/feed-cards/company-profile-pics/ada-health.png",
   airbnb: "/demo/feed-cards/company-profile-pics/airbnb.png",
@@ -83,8 +96,6 @@ const companyLogoPaths: Record<string, string> = {
   youtubekids: "/demo/feed-cards/company-profile-pics/youtube-kids.png",
   zendesk: "/demo/feed-cards/company-profile-pics/zendesk.png",
 };
-
-type Tab = (typeof tabs)[number];
 
 type FeedTask = {
   id: string;
@@ -555,18 +566,23 @@ export function SentiaTabs() {
       </section>
 
       <nav className="tab-bar" aria-label="Primary navigation">
-        {tabs.map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            className="tab-button"
-            data-active={activeTab === tab}
-            aria-current={activeTab === tab ? "page" : undefined}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab}
-          </button>
-        ))}
+        {tabs.map((tab) => {
+          const { Icon, label } = tabItems[tab];
+
+          return (
+            <button
+              key={tab}
+              type="button"
+              className="tab-button"
+              data-active={activeTab === tab}
+              aria-current={activeTab === tab ? "page" : undefined}
+              onClick={() => setActiveTab(tab)}
+            >
+              <Icon className="tab-icon" aria-hidden="true" />
+              <span className="tab-label">{label}</span>
+            </button>
+          );
+        })}
       </nav>
 
       {worldConfig?.appId && rpContext ? (
