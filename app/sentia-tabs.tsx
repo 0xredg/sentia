@@ -1136,27 +1136,26 @@ function FeedTaskCard({
       data-feed-item-id={task.id}
     >
       <header className="feed-card-header">
-        <div className="feed-card-requester">
-          <p>
-            <span>From:</span>
-            <span className="feed-card-logo" aria-hidden="true">
-              {companyLogoPath ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={companyLogoPath} alt="" />
-              ) : (
-                requesterInitial
-              )}
+        <div className="feed-requester-lockup">
+          <span className="feed-card-logo" aria-hidden="true">
+            {companyLogoPath ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={companyLogoPath} alt="" />
+            ) : (
+              requesterInitial
+            )}
+          </span>
+          <div className="feed-card-meta">
+            <p>{task.requesterName}</p>
+            <span className="feed-reward-line">
+              Reward +{formatTokenAmount(task.rewardAmount)} {task.rewardToken}
             </span>
-            <span className="feed-task-reward">
-              +{formatTokenAmount(task.rewardAmount)} {task.rewardToken}
-            </span>
-          </p>
+          </div>
         </div>
 
-        <div className="feed-balance-wrap" aria-live="polite">
-          <div className="feed-balance-pill">
-            {formatTokenAmount(availableBalance)} WLD
-          </div>
+        <div className="feed-claim-total" aria-live="polite">
+          <span>To claim</span>
+          <strong>{formatTokenAmount(availableBalance)} WLD</strong>
           {earnedBump ? (
             <span key={earnedBump.animationKey} className="feed-balance-bump">
               +{formatTokenAmount(earnedBump.amount)} {earnedBump.token}

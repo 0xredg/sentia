@@ -129,45 +129,47 @@ button {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
-  min-height: 48px;
+  gap: 14px;
+  min-height: 52px;
 }
 
-.feed-card-requester {
-  min-width: 0;
-}
-
-.feed-card-header p {
-  margin: 0;
+.feed-requester-lockup {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+}
+
+.feed-card-meta {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.feed-card-meta p {
+  margin: 0;
+  overflow: hidden;
   color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-family: var(--font-mono);
   font-size: 0.86rem;
   font-weight: 700;
   line-height: 1.25;
 }
 
-.feed-card-header span {
+.feed-reward-line {
+  min-width: 0;
+  overflow: hidden;
   color: var(--muted);
-  font-weight: 400;
-}
-
-.feed-card-header .feed-task-reward {
-  min-height: 30px;
-  display: inline-grid;
-  place-items: center;
-  padding: 0 10px;
-  border: 1px solid var(--line-strong);
-  border-radius: 999px;
-  background: var(--success-soft);
-  color: var(--success);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
+  text-overflow: ellipsis;
   white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 
 .feed-card-logo {
@@ -193,32 +195,43 @@ button {
   object-fit: cover;
 }
 
-.feed-balance-wrap {
+.feed-claim-total {
   position: relative;
   display: grid;
+  gap: 4px;
   justify-items: end;
+  min-width: 86px;
+  padding-left: 14px;
+  border-left: 1px solid var(--line);
+  text-align: right;
 }
 
-.feed-balance-pill {
-  min-height: 36px;
-  display: inline-grid;
-  place-items: center;
-  padding: 0 12px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--surface-glass);
-  color: var(--text);
+.feed-claim-total span,
+.feed-claim-total strong {
   font-family: var(--font-mono);
-  font-size: 0.78rem;
-  font-weight: 700;
   letter-spacing: 0.03em;
   white-space: nowrap;
 }
 
+.feed-claim-total span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.feed-claim-total strong {
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
 .feed-balance-bump {
   position: absolute;
-  top: -18px;
-  right: 4px;
+  top: -17px;
+  right: 0;
   color: var(--success);
   font-family: var(--font-mono);
   font-size: 0.8rem;
