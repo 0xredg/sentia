@@ -218,6 +218,32 @@ export function SentiaTabs() {
     setEarningsRefreshKey((currentKey) => currentKey + 1);
   }, []);
 
+  const handleTabChange = useCallback(
+    (tab: Tab) => {
+      if (tab === activeTab) {
+        return;
+      }
+
+      void MiniKit.sendHapticFeedback({
+        hapticsType: "selection-changed",
+        fallback: () => {
+          navigator.vibrate?.(10);
+
+          return {
+            status: "success",
+            version: 1,
+            timestamp: new Date().toISOString(),
+          };
+        },
+      }).catch(() => {
+        // Haptics are optional; tab navigation should never wait on them.
+      });
+
+      setActiveTab(tab);
+    },
+    [activeTab],
+  );
+
   const markTaskCompleted = useCallback(() => {
     refreshEarnings();
     setProfileStats((currentStats) =>
@@ -583,7 +609,7 @@ export function SentiaTabs() {
               className="tab-button"
               data-active={activeTab === tab}
               aria-current={activeTab === tab ? "page" : undefined}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => handleTabChange(tab)}
             >
               <Icon className="tab-icon" aria-hidden="true" />
               <span className="tab-label">{label}</span>
