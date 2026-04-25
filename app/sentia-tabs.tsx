@@ -22,6 +22,7 @@ import {
 } from "@/lib/constants";
 import { isMockAdminEnabled, isMockAdminUser } from "@/lib/mock-admin";
 import {
+  ChevronDown,
   ListChecks,
   UserRound,
   WalletCards,
@@ -1248,6 +1249,8 @@ function EarningsPanel({
   const [isLoading, setIsLoading] = useState(false);
   const [isClaiming, setIsClaiming] = useState(false);
   const [earningsError, setEarningsError] = useState<string | null>(null);
+  const [arePaidOperationsExpanded, setArePaidOperationsExpanded] =
+    useState(true);
 
   const loadEarnings = useCallback(async () => {
     setIsLoading(true);
@@ -1350,26 +1353,43 @@ function EarningsPanel({
       {earningsError ? <p className="profile-error">{earningsError}</p> : null}
 
       <section className="paid-operations" aria-label="Paid operations">
-        <h2>Paid operations</h2>
-        {isLoading ? (
-          <p className="earnings-muted">Loading earnings...</p>
-        ) : earnings?.paidOperations.length ? (
-          <ul>
-            {earnings.paidOperations.map((operation) => (
-              <li key={operation.id}>
-                <span>
-                  {formatTokenAmount(operation.amount)} {operation.token}
-                  {operation.requesterName ? ` (${operation.requesterName})` : ""}
-                </span>
-                <time dateTime={operation.paidAt}>
-                  {formatOperationDate(operation.paidAt)}
-                </time>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="earnings-muted">No paid operations yet.</p>
-        )}
+        <button
+          type="button"
+          className="paid-operations-toggle"
+          aria-expanded={arePaidOperationsExpanded}
+          aria-controls="paid-operations-content"
+          onClick={() =>
+            setArePaidOperationsExpanded((isExpanded) => !isExpanded)
+          }
+        >
+          <span>Paid operations</span>
+          <ChevronDown aria-hidden="true" className="paid-operations-icon" />
+        </button>
+        {arePaidOperationsExpanded ? (
+          <div id="paid-operations-content" className="paid-operations-content">
+            {isLoading ? (
+              <p className="earnings-muted">Loading earnings...</p>
+            ) : earnings?.paidOperations.length ? (
+              <ul>
+                {earnings.paidOperations.map((operation) => (
+                  <li key={operation.id}>
+                    <span>
+                      {formatTokenAmount(operation.amount)} {operation.token}
+                      {operation.requesterName
+                        ? ` (${operation.requesterName})`
+                        : ""}
+                    </span>
+                    <time dateTime={operation.paidAt}>
+                      {formatOperationDate(operation.paidAt)}
+                    </time>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="earnings-muted">No paid operations yet.</p>
+            )}
+          </div>
+        ) : null}
       </section>
     </div>
   );

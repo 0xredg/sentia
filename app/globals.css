@@ -80,6 +80,11 @@ button {
   overflow: hidden;
 }
 
+.app-shell[data-active-tab="Earnings"] .tab-panel {
+  place-items: start center;
+  align-content: start;
+}
+
 .app-shell[data-active-tab="Profile"] .tab-panel {
   place-items: stretch center;
   align-content: stretch;
@@ -453,24 +458,47 @@ h1 {
   text-transform: uppercase;
 }
 
-.earnings-claim-action {
-  width: 100%;
-  max-width: none;
-}
-
 .paid-operations {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   text-align: left;
 }
 
-.paid-operations h2 {
-  margin: 0;
+.paid-operations-toggle {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: var(--text);
+  cursor: pointer;
   font-family: var(--font-mono);
   font-size: 0.84rem;
+  font-weight: 700;
   line-height: 1.2;
+  text-align: left;
   text-transform: uppercase;
+  width: 100%;
+}
+
+.paid-operations-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--muted);
+  flex: 0 0 auto;
+  transition: transform 160ms ease;
+}
+
+.paid-operations-toggle[aria-expanded="false"] .paid-operations-icon {
+  transform: rotate(-90deg);
+}
+
+.paid-operations-content {
+  display: grid;
+  gap: 8px;
 }
 
 .paid-operations ul {
@@ -546,7 +574,7 @@ h1 {
 
 .profile-topbar {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
 }
@@ -745,6 +773,13 @@ h1 {
   background: var(--active);
   color: var(--active-text);
   cursor: pointer;
+}
+
+.primary-action.earnings-claim-action {
+  inline-size: 100%;
+  width: 100%;
+  justify-self: stretch;
+  max-width: none;
 }
 
 .secondary-action {
