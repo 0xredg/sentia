@@ -393,7 +393,9 @@ button {
 
 .earnings-panel {
   display: grid;
+  align-content: start;
   gap: 18px;
+  text-align: left;
 }
 
 .earnings-panel h1,
@@ -415,28 +417,45 @@ h1 {
 
 .earnings-metric {
   min-width: 0;
+  min-height: clamp(116px, 13dvh, 148px);
   display: grid;
+  align-content: space-between;
   gap: 8px;
-  padding: 12px 10px;
+  padding: 16px 10px 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface-raised);
 }
 
-.earnings-metric span {
+.earnings-metric span,
+.earnings-metric small {
+  overflow: hidden;
   color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.64rem;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.15;
+  text-overflow: ellipsis;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .earnings-metric strong {
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 0.98rem;
-  line-height: 1.1;
+  font-size: clamp(1.35rem, 7.2vw, 1.9rem);
+  line-height: 1;
+}
+
+.earnings-metric small {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.earnings-claim-action {
+  width: 100%;
+  max-width: none;
 }
 
 .paid-operations {

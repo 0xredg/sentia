@@ -1316,27 +1316,31 @@ function EarningsPanel({
 
   return (
     <div className="earnings-panel">
-      <p className="eyebrow">Sentia</p>
-      <h1 id="active-tab-title">Earnings</h1>
+      <p className="eyebrow" id="active-tab-title">
+        Earnings
+      </p>
 
       <section className="earnings-summary" aria-label="Earnings summary">
         <EarningsMetric
-          label="Available to claim"
-          value={`${formatTokenAmount(summary.available)} WLD`}
+          label="To claim"
+          value={formatTokenAmount(summary.available)}
+          detail="WLD"
         />
         <EarningsMetric
           label="Processing"
-          value={`${formatTokenAmount(summary.processing)} WLD`}
+          value={formatTokenAmount(summary.processing)}
+          detail="WLD"
         />
         <EarningsMetric
-          label="Total paid"
-          value={`${formatTokenAmount(summary.totalPaid)} WLD`}
+          label="Paid"
+          value={formatTokenAmount(summary.totalPaid)}
+          detail="WLD"
         />
       </section>
 
       <button
         type="button"
-        className="primary-action"
+        className="primary-action earnings-claim-action"
         disabled={!canClaim || isLoading}
         onClick={claimEarnings}
       >
@@ -1371,11 +1375,20 @@ function EarningsPanel({
   );
 }
 
-function EarningsMetric({ label, value }: { label: string; value: string }) {
+function EarningsMetric({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+}) {
   return (
     <article className="earnings-metric">
       <span>{label}</span>
       <strong>{value}</strong>
+      <small>{detail}</small>
     </article>
   );
 }
