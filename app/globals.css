@@ -80,6 +80,11 @@ button {
   overflow: hidden;
 }
 
+.app-shell[data-active-tab="Profile"] .tab-panel {
+  place-items: stretch center;
+  align-content: stretch;
+}
+
 .feed-panel {
   width: 100%;
   max-width: 430px;
@@ -374,10 +379,16 @@ button {
 
 .profile-panel {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 18px;
+  display: grid;
+  grid-template-rows: auto auto auto auto minmax(28px, 0.6fr) auto auto;
+  align-items: stretch;
+  gap: clamp(18px, 2.7dvh, 28px);
+  min-height: calc(100dvh - var(--tab-bar-space) - max(24px, env(safe-area-inset-top)));
+  text-align: left;
+}
+
+.profile-panel[data-authenticated="false"] {
+  grid-template-rows: auto 1fr auto;
 }
 
 .earnings-panel {
@@ -480,9 +491,6 @@ h1 {
 }
 
 .logout-button {
-  position: absolute;
-  top: 0;
-  right: 0;
   min-height: 44px;
   padding: 0 13px;
   border: 1px solid var(--line);
@@ -517,13 +525,43 @@ h1 {
   text-transform: uppercase;
 }
 
+.profile-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.profile-logged-out-state {
+  display: grid;
+  place-items: center;
+  min-height: 0;
+}
+
+.profile-connect-action {
+  width: fit-content;
+  min-width: 0;
+  padding-inline: 22px;
+}
+
+.profile-identity-row {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+}
+
 .profile-heading {
   display: grid;
-  gap: 8px;
+  gap: 6px;
+  min-width: 0;
 }
 
 .profile-heading h1 {
-  font-size: clamp(2rem, 12vw, 3.25rem);
+  overflow: hidden;
+  font-size: clamp(1.3rem, 6.2vw, 2rem);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .profile-heading p,
@@ -533,6 +571,102 @@ h1 {
   color: var(--muted);
   font-size: 0.98rem;
   line-height: 1.45;
+}
+
+.profile-level-copy {
+  display: grid;
+  gap: 2px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.profile-level-copy span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 400;
+}
+
+.profile-progress {
+  display: grid;
+  gap: 10px;
+  padding-block: 2px;
+}
+
+.profile-progress-copy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.profile-progress-copy strong {
+  color: var(--text);
+}
+
+.profile-progress-track {
+  height: 12px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-raised);
+}
+
+.profile-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--active);
+}
+
+.profile-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.profile-metric-card {
+  min-width: 0;
+  min-height: clamp(116px, 13dvh, 148px);
+  display: grid;
+  align-content: space-between;
+  gap: 8px;
+  padding: 16px 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-raised);
+}
+
+.profile-metric-card span,
+.profile-metric-card small {
+  overflow: hidden;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  font-weight: 700;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.profile-metric-card strong {
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: clamp(1.35rem, 7.2vw, 1.9rem);
+  line-height: 1;
+}
+
+.profile-metric-card small {
+  font-size: 0.62rem;
+  font-weight: 400;
+  text-transform: none;
 }
 
 .profile-stats {
@@ -551,7 +685,7 @@ h1 {
 }
 
 .avatar {
-  width: 112px;
+  width: 72px;
   aspect-ratio: 1;
   display: grid;
   place-items: center;
@@ -561,7 +695,7 @@ h1 {
   background: var(--surface-raised);
   color: var(--text);
   font-family: var(--font-display);
-  font-size: 2rem;
+  font-size: 1.4rem;
   font-weight: 400;
 }
 
@@ -613,6 +747,8 @@ h1 {
   display: grid;
   justify-items: center;
   gap: 10px;
+  align-self: start;
+  margin-top: clamp(2px, 0.8dvh, 10px);
 }
 
 .builder-access-form {

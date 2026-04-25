@@ -152,6 +152,8 @@ type ProfileUser = {
 
 type ProfileStats = {
   completedTasks: number;
+  reliabilityPercent: number;
+  streakDays: number;
 };
 
 type WorldConfig = {
@@ -220,7 +222,12 @@ export function SentiaTabs() {
     refreshEarnings();
     setProfileStats((currentStats) =>
       currentStats
-        ? { completedTasks: currentStats.completedTasks + 1 }
+        ? {
+            ...currentStats,
+            completedTasks: currentStats.completedTasks + 1,
+            reliabilityPercent: currentStats.reliabilityPercent,
+            streakDays: Math.max(1, currentStats.streakDays),
+          }
         : currentStats,
     );
   }, [refreshEarnings]);
@@ -600,7 +607,8 @@ export function SentiaTabs() {
           }}
           onError={(errorCode) => {
             setStatus("idle");
-            setError(`World ID verification failed: ${errorCode}`);
+            setError(null);
+            console.warn("World ID verification failed", errorCode);
           }}
         />
       ) : null}
@@ -1394,9 +1402,9 @@ function ProfilePanel({
   const avatarUrl = user?.avatar_url ?? previewProfile?.profilePictureUrl;
   const initials = useMemo(() => getInitials(displayName), [displayName]);
   const completedTasks = stats?.completedTasks ?? 0;
-  const completedTasksLabel = `${completedTasks} ${
-    completedTasks === 1 ? "task" : "tasks"
-  } completed`;
+  const reliabilityPercent = stats?.reliabilityPercent ?? 0;
+  const streakDays = stats?.streakDays ?? 0;
+  const rank = getProfileRank(completedTasks);
   const isBusy =
     status === "loading" ||
     status === "authenticating" ||
@@ -1449,90 +1457,120 @@ function ProfilePanel({
   );
 
   return (
-    <div className="profile-panel">
-      {user ? (
-        <button
-          type="button"
-          className="logout-button"
-          disabled={isBusy}
-          onClick={onLogout}
-          aria-label="Log out"
-        >
-          {status === "logging_out" ? "..." : "Log out"}
-        </button>
-      ) : null}
-
-      <p className="eyebrow">Profile</p>
-
-      <div className="avatar" aria-hidden="true">
-        {avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={avatarUrl} alt="" />
-        ) : (
-          <span>{initials}</span>
-        )}
-      </div>
-
-      <div className="profile-heading">
-        <h1 id="active-tab-title" onClick={handleProfileNameClick}>
-          {displayName}
-        </h1>
-        <p>
-          {user
-            ? isVerified
-              ? "Verified human"
-              : hasBuilderAccess
-                ? "Identity not verified yet"
-                : "Identity not verified yet"
-            : isMiniKitInitializing
-              ? "Connecting to World App..."
-              : "Connect your World wallet to start"}
-        </p>
-      </div>
-
-      {user ? <div className="profile-stats">{completedTasksLabel}</div> : null}
-
-      {isVerified ? (
-        <div className="verified-status" role="status">
-          <span aria-hidden="true">✓</span>
-          Verified
-        </div>
-      ) : user ? (
-        <div className="profile-actions">
-          {hasBuilderAccess ? (
-            <div className="builder-status" role="status">
-              <span aria-hidden="true">✓</span>
-              World3 hacker
-            </div>
-          ) : null}
-
+    <div className="profile-panel" data-authenticated={user ? "true" : "false"}>
+      <div className="profile-topbar">
+        <p className="eyebrow">Profile</p>
+        {user ? (
           <button
             type="button"
-            className="primary-action"
+            className="logout-button"
             disabled={isBusy}
-            onClick={onVerify}
+            onClick={onLogout}
+            aria-label="Log out"
           >
-            {status === "verifying" ? "Verifying..." : "Verify identity"}
+            {status === "logging_out" ? "..." : "Log out"}
+          </button>
+        ) : null}
+      </div>
+
+      {!user ? (
+        <div className="profile-logged-out-state">
+          <button
+            type="button"
+            className="primary-action profile-connect-action"
+            disabled={isBusy || isMiniKitInitializing || !isWorldApp}
+            onClick={onConnectWallet}
+          >
+            {status === "authenticating" || isMiniKitInitializing
+              ? "Connecting..."
+              : "Connect World wallet"}
           </button>
         </div>
       ) : (
-        <button
-          type="button"
-          className="primary-action"
-          disabled={isBusy || isMiniKitInitializing || !isWorldApp}
-          onClick={onConnectWallet}
-        >
-          {status === "authenticating" || isMiniKitInitializing
-            ? "Connecting..."
-            : "Connect World wallet"}
-        </button>
-      )}
+        <>
+          <div className="profile-identity-row">
+            <div className="avatar" aria-hidden="true">
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatarUrl} alt="" />
+              ) : (
+                <span>{initials}</span>
+              )}
+            </div>
 
-      {miniKitInstallState === false ? (
-        <p className="profile-note">
-          Open Sentia inside World App to connect and verify.
-        </p>
-      ) : null}
+            <div className="profile-heading">
+              <h1 id="active-tab-title" onClick={handleProfileNameClick}>
+                {displayName}
+              </h1>
+              <p className="profile-level-copy">
+                Level {rank.level}
+                <span>
+                  {rank.tasksToNextLevel} tasks to Level {rank.nextLevel}
+                </span>
+              </p>
+            </div>
+          </div>
+
+          <section
+            className="profile-progress"
+            aria-label={`Level progress ${rank.progressPercent}%`}
+          >
+            <div className="profile-progress-copy">
+              <span>Progress to next level</span>
+              <strong>{rank.progressPercent}%</strong>
+            </div>
+            <div className="profile-progress-track">
+              <div
+                className="profile-progress-fill"
+                style={{ width: `${rank.progressPercent}%` }}
+              />
+            </div>
+          </section>
+
+          <section className="profile-metric-grid" aria-label="Profile metrics">
+            <ProfileMetric
+              label="Tasks"
+              value={String(completedTasks)}
+              detail="completed"
+            />
+            <ProfileMetric
+              label="Reliability"
+              value={`${reliabilityPercent}%`}
+              detail="accepted"
+            />
+            <ProfileMetric
+              label="Streak"
+              value={String(streakDays)}
+              detail={streakDays === 1 ? "day" : "days"}
+            />
+          </section>
+
+          {isVerified ? (
+            <div className="verified-status" role="status">
+              <span aria-hidden="true">✓</span>
+              Verified
+            </div>
+          ) : (
+            <div className="profile-actions">
+              <button
+                type="button"
+                className="primary-action"
+                disabled={isBusy}
+                onClick={onVerify}
+              >
+                {status === "verifying" ? "Verifying..." : "Verify identity"}
+              </button>
+
+              {hasBuilderAccess ? (
+                <div className="builder-status" role="status">
+                  <span aria-hidden="true">✓</span>
+                  World3 hacker
+                </div>
+              ) : null}
+            </div>
+          )}
+        </>
+      )}
 
       {error ? <p className="profile-error">{error}</p> : null}
 
@@ -1589,6 +1627,37 @@ function ProfilePanel({
       ) : null}
     </div>
   );
+}
+
+function ProfileMetric({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <article className="profile-metric-card">
+      <span>{label}</span>
+      <strong>{value}</strong>
+      <small>{detail}</small>
+    </article>
+  );
+}
+
+function getProfileRank(completedTasks: number) {
+  const normalizedTasks = Math.max(0, completedTasks);
+  const level = Math.floor(normalizedTasks / 10) + 1;
+  const tasksIntoLevel = normalizedTasks % 10;
+
+  return {
+    level,
+    nextLevel: level + 1,
+    tasksToNextLevel: 10 - tasksIntoLevel,
+    progressPercent: tasksIntoLevel * 10,
+  };
 }
 
 function getInitials(name: string) {

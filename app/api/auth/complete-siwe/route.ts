@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySiweMessage } from "@worldcoin/minikit-js/siwe";
+import { createDefaultAvatarUrl } from "@/lib/avatar";
 import { WALLET_AUTH_STATEMENT } from "@/lib/constants";
 import {
   clearNonceCookie,
@@ -51,6 +52,7 @@ export async function POST(request: NextRequest) {
     const walletAddress = verifiedAddress.toLowerCase();
     const username = profile?.username?.trim() || null;
     const avatarUrl = profile?.profilePictureUrl?.trim() || null;
+    const defaultAvatarUrl = createDefaultAvatarUrl(walletAddress);
     const supabase = getSupabaseAdmin();
 
     const { data: existingUser, error: existingUserError } = await supabase
@@ -79,7 +81,7 @@ export async function POST(request: NextRequest) {
             existingUser?.display_name ??
             existingUser?.world_username ??
             null,
-          avatar_url: avatarUrl ?? existingUser?.avatar_url ?? null,
+          avatar_url: avatarUrl ?? existingUser?.avatar_url ?? defaultAvatarUrl,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "wallet_address" },
