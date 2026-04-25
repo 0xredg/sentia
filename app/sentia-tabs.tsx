@@ -247,16 +247,6 @@ export function SentiaTabs() {
 
   const markTaskCompleted = useCallback(() => {
     refreshEarnings();
-    setProfileStats((currentStats) =>
-      currentStats
-        ? {
-            ...currentStats,
-            completedTasks: currentStats.completedTasks + 1,
-            reliabilityPercent: currentStats.reliabilityPercent,
-            streakDays: Math.max(1, currentStats.streakDays),
-          }
-        : currentStats,
-    );
   }, [refreshEarnings]);
 
   const refreshFeed = useCallback(() => {
@@ -468,6 +458,7 @@ export function SentiaTabs() {
         return "User tasks reset.";
       }
 
+      await loadProfile();
       refreshEarnings();
       return "Processing tasks paid.";
     },
@@ -1174,14 +1165,18 @@ function FeedTaskCard({
         </div>
       </header>
 
+      <section className="feed-card-question" aria-label="Task question">
+        <p>{task.prompt}</p>
+      </section>
+
       <div className="feed-card-image-wrap">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={task.imagePath} alt="" className="feed-card-image-blur" />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={task.imagePath} alt="" className="feed-card-image" />
       </div>
 
-      <section className="feed-card-prompt" aria-label="Task question">
-        <p>{task.prompt}</p>
-
+      <section className="feed-card-answer" aria-label="Task answer">
         <div className="feed-answer-buttons">
           {getVisibleResponseOptions(task).map((option) => (
             <button
@@ -1199,6 +1194,7 @@ function FeedTaskCard({
             </button>
           ))}
         </div>
+        <p>Select an answer, then swipe up to submit.</p>
       </section>
     </article>
   );

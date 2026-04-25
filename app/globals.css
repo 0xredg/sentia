@@ -114,8 +114,8 @@ button {
   height: 100dvh;
   min-height: 0;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 16px;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 12px;
   padding: max(24px, env(safe-area-inset-top)) 16px var(--tab-bar-space);
   scroll-snap-align: start;
   scroll-snap-stop: always;
@@ -231,6 +231,7 @@ button {
 }
 
 .feed-card-image-wrap {
+  position: relative;
   min-height: 0;
   overflow: hidden;
   border: 1px solid var(--line);
@@ -238,7 +239,22 @@ button {
   background: var(--surface);
 }
 
+.feed-card-image-blur {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center;
+  filter: blur(22px) saturate(1.22);
+  opacity: 0.62;
+  transform: scale(1.12);
+}
+
 .feed-card-image {
+  position: relative;
+  z-index: 1;
   width: 100%;
   height: 100%;
   display: block;
@@ -246,23 +262,34 @@ button {
   object-position: center;
 }
 
-.feed-card-prompt {
+.feed-card-question,
+.feed-card-answer {
   display: grid;
   gap: 12px;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface-glass);
-  backdrop-filter: blur(18px);
+  padding: 0 2px;
 }
 
-.feed-card-prompt p {
+.feed-card-question p {
   margin: 0;
   color: var(--text);
   font-family: var(--font-display);
   font-size: clamp(1.05rem, 4.7vw, 1.38rem);
   font-weight: 600;
   line-height: 1.08;
+}
+
+.feed-card-answer {
+  gap: 10px;
+}
+
+.feed-card-answer p {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
 }
 
 .feed-answer-buttons {
