@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 
 type TaskType =
@@ -66,16 +67,44 @@ function normalizeOptions(value: unknown) {
 
 export async function GET() {
   try {
+    const currentUser = await getCurrentUser();
+
+    if (!currentUser) {
+      return NextResponse.json(
+        { error: "Authentication required." },
+        { status: 401 },
+      );
+    }
+
     const supabase = getSupabaseAdmin();
-    const { data, error } = await supabase
+    const { data: completedResponses, error: completedError } = await supabase
+      .from("task_responses")
+      .select("task_id")
+      .eq("user_id", currentUser.user.id);
+
+    if (completedError) {
+      throw completedError;
+    }
+
+    const completedTaskIds = (completedResponses ?? []).map(
+      (response) => response.task_id,
+    );
+    let query = supabase
       .from("tasks")
       .select(
-        "id, requester_name, prompt, task_type, input_payload, response_schema, demo_source_id, demo_feed_order, created_at",
+        "id, requester_name, prompt, task_type, input_payload, response_schema, reward_amount, reward_token, demo_source_id, demo_feed_order, created_at",
       )
       .eq("status", "open")
+      .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
       .order("demo_feed_order", { ascending: true, nullsFirst: false })
       .order("demo_source_id", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: true });
+
+    if (completedTaskIds.length > 0) {
+      query = query.not("id", "in", `(${completedTaskIds.join(",")})`);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       throw error;
@@ -109,6 +138,8 @@ export async function GET() {
         imagePath: inputPayload.image_path,
         responseType,
         responseOptions,
+        rewardAmount: String(task.reward_amount),
+        rewardToken: task.reward_token,
       };
     });
 

@@ -73,7 +73,7 @@ export async function getCurrentUser() {
   const { data, error } = await supabase
     .from("user_sessions")
     .select(
-      "user_id, expires_at, users(id, wallet_address, world_username, display_name, avatar_url, verification_status, verified_at)",
+      "user_id, expires_at, users(id, wallet_address, world_username, display_name, avatar_url, verification_status, verified_at, builder_access_status, builder_access_granted_at)",
     )
     .eq("token_hash", tokenHash)
     .gt("expires_at", new Date().toISOString())
