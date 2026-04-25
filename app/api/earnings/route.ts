@@ -11,7 +11,40 @@ type LedgerRow = {
   status: LedgerStatus;
   created_at: string;
   paid_at: string | null;
+  task_responses:
+    | {
+        tasks:
+          | {
+              requester_name: string;
+            }
+          | {
+              requester_name: string;
+            }[]
+          | null;
+      }
+    | {
+        tasks:
+          | {
+              requester_name: string;
+            }
+          | {
+              requester_name: string;
+            }[]
+          | null;
+      }[]
+    | null;
 };
+
+function firstItem<T>(value: T | T[] | null | undefined) {
+  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+}
+
+function getRequesterName(row: LedgerRow) {
+  const taskResponse = firstItem(row.task_responses);
+  const task = firstItem(taskResponse?.tasks);
+
+  return task?.requester_name ?? null;
+}
 
 function normalizeDecimal(value: string | number) {
   return String(value);
@@ -66,7 +99,9 @@ export async function GET() {
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from("earnings_ledger")
-    .select("id, amount, token, status, created_at, paid_at")
+    .select(
+      "id, amount, token, status, created_at, paid_at, task_responses(tasks(requester_name))",
+    )
     .eq("user_id", currentUser.user.id)
     .order("paid_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
@@ -89,6 +124,7 @@ export async function GET() {
       amount: String(row.amount),
       token: row.token,
       paidAt: row.paid_at ?? row.created_at,
+      requesterName: getRequesterName(row),
     }));
 
   return NextResponse.json({

@@ -20,6 +20,7 @@ import {
   PROFILE_VERIFICATION_ACTION,
   WALLET_AUTH_STATEMENT,
 } from "@/lib/constants";
+import { isMockAdminEnabled, isMockAdminUser } from "@/lib/mock-admin";
 
 const tabs = ["Feed", "Earnings", "Profile"] as const;
 const companyLogoPaths: Record<string, string> = {
@@ -67,6 +68,7 @@ type PaidOperation = {
   amount: string;
   token: string;
   paidAt: string;
+  requesterName: string | null;
 };
 
 type EarningsData = {
@@ -84,6 +86,10 @@ type ProfileUser = {
   verified_at: string | null;
   builder_access_status: "none" | "granted";
   builder_access_granted_at: string | null;
+};
+
+type ProfileStats = {
+  completedTasks: number;
 };
 
 type WorldConfig = {
@@ -104,6 +110,8 @@ type MiniKitPreviewProfile = {
   username: string | null;
   profilePictureUrl: string | null;
 };
+
+type MockAdminAction = "reset_users" | "reset_tasks" | "pay_tasks";
 
 async function resolveWorldProfile(walletAddress: string) {
   const immediateProfile = {
@@ -131,6 +139,7 @@ export function SentiaTabs() {
   const { isInstalled } = useMiniKit();
   const [activeTab, setActiveTab] = useState<Tab>("Feed");
   const [user, setUser] = useState<ProfileUser | null>(null);
+  const [profileStats, setProfileStats] = useState<ProfileStats | null>(null);
   const [previewProfile, setPreviewProfile] =
     useState<MiniKitPreviewProfile | null>(null);
   const [worldConfig, setWorldConfig] = useState<WorldConfig | null>(null);
@@ -139,9 +148,23 @@ export function SentiaTabs() {
   const [status, setStatus] = useState<ProfileStatus>("loading");
   const [error, setError] = useState<string | null>(null);
   const [earningsRefreshKey, setEarningsRefreshKey] = useState(0);
+  const [feedRefreshKey, setFeedRefreshKey] = useState(0);
 
   const refreshEarnings = useCallback(() => {
     setEarningsRefreshKey((currentKey) => currentKey + 1);
+  }, []);
+
+  const markTaskCompleted = useCallback(() => {
+    refreshEarnings();
+    setProfileStats((currentStats) =>
+      currentStats
+        ? { completedTasks: currentStats.completedTasks + 1 }
+        : currentStats,
+    );
+  }, [refreshEarnings]);
+
+  const refreshFeed = useCallback(() => {
+    setFeedRefreshKey((currentKey) => currentKey + 1);
   }, []);
 
   const loadProfile = useCallback(async () => {
@@ -166,6 +189,7 @@ export function SentiaTabs() {
       }
 
       setUser(profile.user);
+      setProfileStats(profile.stats);
       setWorldConfig(config);
     } catch (loadError) {
       setError(
@@ -304,6 +328,7 @@ export function SentiaTabs() {
       }
 
       setUser(null);
+      setProfileStats(null);
       setPreviewProfile(null);
       setRpContext(null);
       setIsVerifyOpen(false);
@@ -315,6 +340,43 @@ export function SentiaTabs() {
       setStatus("idle");
     }
   }, []);
+
+  const runMockAdminAction = useCallback(
+    async (action: MockAdminAction) => {
+      const response = await fetch("/api/mock-admin/actions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Mock admin action failed.");
+      }
+
+      if (action === "reset_users") {
+        setUser(null);
+        setProfileStats(null);
+        setPreviewProfile(null);
+        setRpContext(null);
+        setIsVerifyOpen(false);
+        refreshEarnings();
+        refreshFeed();
+        return "Users reset.";
+      }
+
+      if (action === "reset_tasks") {
+        await loadProfile();
+        refreshEarnings();
+        refreshFeed();
+        return "User tasks reset.";
+      }
+
+      refreshEarnings();
+      return "Processing tasks paid.";
+    },
+    [loadProfile, refreshEarnings, refreshFeed],
+  );
 
   const startVerification = useCallback(async () => {
     setError(null);
@@ -414,12 +476,15 @@ export function SentiaTabs() {
       <section className="tab-panel" aria-labelledby="active-tab-title">
         {activeTab === "Feed" ? (
           <FeedPanel
+            key={feedRefreshKey}
             onBuilderAccess={unlockBuilderAccess}
             onEarningsChanged={refreshEarnings}
+            onTaskCompleted={markTaskCompleted}
           />
         ) : activeTab === "Profile" ? (
           <ProfilePanel
             user={user}
+            stats={profileStats}
             previewProfile={previewProfile}
             miniKitInstallState={isInstalled}
             status={status}
@@ -427,6 +492,7 @@ export function SentiaTabs() {
             onConnectWallet={connectWallet}
             onVerify={startVerification}
             onLogout={logout}
+            onMockAdminAction={runMockAdminAction}
           />
         ) : (
           <EarningsPanel
@@ -478,9 +544,11 @@ export function SentiaTabs() {
 function FeedPanel({
   onBuilderAccess,
   onEarningsChanged,
+  onTaskCompleted,
 }: {
   onBuilderAccess: (code: string) => void;
   onEarningsChanged: () => void;
+  onTaskCompleted: () => void;
 }) {
   const feedRef = useRef<HTMLDivElement>(null);
   const activeFeedItemIdRef = useRef<string | null>(null);
@@ -707,7 +775,7 @@ function FeedPanel({
         window.setTimeout(() => {
           removeTask(task.id);
           scrollToFeedItem(scrollTargetId);
-          onEarningsChanged();
+          onTaskCompleted();
           void loadAvailableBalance();
         }, 260);
       } catch (error) {
@@ -737,6 +805,7 @@ function FeedPanel({
     [
       loadAvailableBalance,
       onEarningsChanged,
+      onTaskCompleted,
       removeTask,
       scrollFeedToStart,
       scrollToFeedItem,
@@ -1185,6 +1254,7 @@ function EarningsPanel({
               <li key={operation.id}>
                 <span>
                   {formatTokenAmount(operation.amount)} {operation.token}
+                  {operation.requesterName ? ` (${operation.requesterName})` : ""}
                 </span>
                 <time dateTime={operation.paidAt}>
                   {formatOperationDate(operation.paidAt)}
@@ -1219,6 +1289,7 @@ function formatOperationDate(value: string) {
 
 function ProfilePanel({
   user,
+  stats,
   previewProfile,
   miniKitInstallState,
   status,
@@ -1226,8 +1297,10 @@ function ProfilePanel({
   onConnectWallet,
   onVerify,
   onLogout,
+  onMockAdminAction,
 }: {
   user: ProfileUser | null;
+  stats: ProfileStats | null;
   previewProfile: MiniKitPreviewProfile | null;
   miniKitInstallState: boolean | undefined;
   status: ProfileStatus;
@@ -1235,9 +1308,17 @@ function ProfilePanel({
   onConnectWallet: () => void;
   onVerify: () => void;
   onLogout: () => void;
+  onMockAdminAction: (action: MockAdminAction) => Promise<string>;
 }) {
+  const [mockAdminTapCount, setMockAdminTapCount] = useState(0);
+  const [isMockAdminOpen, setIsMockAdminOpen] = useState(false);
+  const [mockAdminAction, setMockAdminAction] =
+    useState<MockAdminAction | null>(null);
+  const [mockAdminMessage, setMockAdminMessage] = useState<string | null>(null);
+  const [mockAdminError, setMockAdminError] = useState<string | null>(null);
   const isVerified = user?.verification_status === "verified";
   const hasBuilderAccess = user?.builder_access_status === "granted";
+  const canUseMockAdmin = isMockAdminEnabled() && isMockAdminUser(user);
   const displayName =
     user?.world_username ??
     user?.display_name ??
@@ -1245,6 +1326,10 @@ function ProfilePanel({
     "Guest";
   const avatarUrl = user?.avatar_url ?? previewProfile?.profilePictureUrl;
   const initials = useMemo(() => getInitials(displayName), [displayName]);
+  const completedTasks = stats?.completedTasks ?? 0;
+  const completedTasksLabel = `${completedTasks} ${
+    completedTasks === 1 ? "task" : "tasks"
+  } completed`;
   const isBusy =
     status === "loading" ||
     status === "authenticating" ||
@@ -1252,6 +1337,49 @@ function ProfilePanel({
     status === "builder_access";
   const isMiniKitInitializing = miniKitInstallState === undefined;
   const isWorldApp = miniKitInstallState === true;
+  const handleProfileNameClick = useCallback(() => {
+    if (!canUseMockAdmin) {
+      return;
+    }
+
+    setMockAdminTapCount((currentCount) => {
+      const nextCount = currentCount + 1;
+
+      if (nextCount >= 10) {
+        setIsMockAdminOpen(true);
+        setMockAdminMessage(null);
+        setMockAdminError(null);
+        return 0;
+      }
+
+      return nextCount;
+    });
+  }, [canUseMockAdmin]);
+  const runMockAction = useCallback(
+    async (action: MockAdminAction) => {
+      setMockAdminAction(action);
+      setMockAdminMessage(null);
+      setMockAdminError(null);
+
+      try {
+        const message = await onMockAdminAction(action);
+        setMockAdminMessage(message);
+
+        if (action === "reset_users") {
+          setIsMockAdminOpen(false);
+        }
+      } catch (actionError) {
+        setMockAdminError(
+          actionError instanceof Error
+            ? actionError.message
+            : "Mock admin action failed.",
+        );
+      } finally {
+        setMockAdminAction(null);
+      }
+    },
+    [onMockAdminAction],
+  );
 
   return (
     <div className="profile-panel">
@@ -1279,7 +1407,9 @@ function ProfilePanel({
       </div>
 
       <div className="profile-heading">
-        <h1 id="active-tab-title">{displayName}</h1>
+        <h1 id="active-tab-title" onClick={handleProfileNameClick}>
+          {displayName}
+        </h1>
         <p>
           {user
             ? isVerified
@@ -1292,6 +1422,8 @@ function ProfilePanel({
               : "Connect your World wallet to start"}
         </p>
       </div>
+
+      {user ? <div className="profile-stats">{completedTasksLabel}</div> : null}
 
       {isVerified ? (
         <div className="verified-status" role="status">
@@ -1336,6 +1468,58 @@ function ProfilePanel({
       ) : null}
 
       {error ? <p className="profile-error">{error}</p> : null}
+
+      {canUseMockAdmin && isMockAdminOpen ? (
+        <div className="mock-admin-sheet-backdrop" role="presentation">
+          <section
+            className="mock-admin-sheet"
+            aria-label="Mock admin actions"
+          >
+            <button
+              type="button"
+              className="mock-admin-close"
+              disabled={mockAdminAction !== null}
+              onClick={() => setIsMockAdminOpen(false)}
+            >
+              Close
+            </button>
+            <h2>Mock admin</h2>
+            <div className="mock-admin-actions">
+              <button
+                type="button"
+                disabled={mockAdminAction !== null}
+                onClick={() => void runMockAction("reset_users")}
+              >
+                {mockAdminAction === "reset_users"
+                  ? "Resetting..."
+                  : "Reset users"}
+              </button>
+              <button
+                type="button"
+                disabled={mockAdminAction !== null}
+                onClick={() => void runMockAction("reset_tasks")}
+              >
+                {mockAdminAction === "reset_tasks"
+                  ? "Resetting..."
+                  : "Reset user tasks"}
+              </button>
+              <button
+                type="button"
+                disabled={mockAdminAction !== null}
+                onClick={() => void runMockAction("pay_tasks")}
+              >
+                {mockAdminAction === "pay_tasks" ? "Paying..." : "Pay tasks"}
+              </button>
+            </div>
+            {mockAdminMessage ? (
+              <p className="mock-admin-message">{mockAdminMessage}</p>
+            ) : null}
+            {mockAdminError ? (
+              <p className="mock-admin-error">{mockAdminError}</p>
+            ) : null}
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }
