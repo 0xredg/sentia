@@ -15,7 +15,7 @@ Sentia is a World Mini App where verified humans complete judgment tasks and rec
 - Database: Supabase Postgres with row-level security where possible
 - Identity: World ID 4.0 in Managed mode through IDKit
 - Wallet auth: MiniKit Wallet Auth / SIWE, verified on the backend
-- Rewards: real WLD payouts from a small Sentia treasury wallet
+- Rewards: real WLD payouts from a pre-funded Sentia World Chain reward vault
 
 ## Architecture Principles
 
@@ -31,6 +31,7 @@ Sentia is a World Mini App where verified humans complete judgment tasks and rec
 - [Technical Architecture](./technical-architecture.md)
 - [Data Model](./data-model.md)
 - [World Integration](./world-integration.md)
+- [World Chain Reward Vault](./world-chain-reward-vault.md)
 - [MVP Build Plan](./mvp-build-plan.md)
 
 ## MVP Definition
@@ -41,13 +42,13 @@ The hackathon MVP is successful when a judge can understand and see this complet
 2. The user verifies as a real unique human.
 3. The user completes a human judgment task in the Feed.
 4. Sentia records the answer and creates an earning.
-5. Sentia pays WLD from its treasury wallet.
+5. Sentia pays WLD from its pre-funded World Chain reward vault.
 6. The user sees the earning and payout status in Earnings.
 
 ## Non-Goals For Hackathon
 
 - No requester dashboard beyond seeded/demo tasks unless time remains.
-- No smart contract escrow in the MVP.
+- No full marketplace escrow in the MVP.
 - No full reputation system.
 - No complex consensus logic across many workers.
 - No generic marketplace mechanics.
@@ -58,7 +59,7 @@ These values must never be exposed in client-side code:
 
 - `RP_SIGNING_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- treasury wallet private key
+- vault owner / payout wallet private key
 - Developer Portal API key, if used for transaction verification
 
 Public or client-safe values:
