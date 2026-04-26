@@ -1,6 +1,8 @@
 # SENTIA
 Sentia connects real, verified humans to tasks that AI can’t solve — and pays them instantly.
 
+Sentia turns human judgment into a fast, trusted workforce for AI teams: verified contributors complete lightweight tasks, earn in WLD, and build a reputation through reliability and streaks. The app is designed as a World Mini App, making identity verification and rewards feel native from the first tap.
+
 ## App preview
 
 <p>
