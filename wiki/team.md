@@ -58,19 +58,9 @@ Our shared history at Ledger taught us how to build for mainstream users who do 
 
 ---
 
-## Also Building: Hyperbullets
-
-We are already building together outside of Sentia.
-
-[Hyperbullets](https://hyperbullets.com) is a mobile-first app designed to make trading on Hyperliquid and Polymarket feel intuitive and accessible. It is a user-friendly interface for on-chain derivatives and prediction markets, built with the same philosophy we bring to Sentia: real value, zero friction.
-
-Hyperbullets proves we can execute as a team across product, engineering coordination, and growth — and that we understand the web3 user deeply enough to build tools they actually want to use.
-
----
-
 ## Why This Team Wins
 
 - **Proven working relationship:** 3+ years at Ledger means we have already survived hard problems together.
 - **Complementary skills:** Two PMs who know blockchain integrations inside out, plus a business lead who built a 4x revenue line. We respect each other's expertise and move fast.
 - **Web3-native:** We have built inside the industry, not adjacent to it. We understand users, wallets, transactions, and the urgency of real-time crypto products.
-- **Already executing:** Hyperbullets is live. We do not just ideate — we ship.
+- **Execution-focused:** We do not just ideate — we ship.

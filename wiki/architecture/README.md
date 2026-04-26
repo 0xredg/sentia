@@ -1,6 +1,6 @@
 # Sentia Mini App Architecture
 
-This folder is the technical base for the Sentia hackathon MVP.
+This folder summarizes the technical base for Sentia.
 
 Sentia is a World Mini App where verified humans complete judgment tasks and receive WLD rewards. The product has three tabs:
 
@@ -29,10 +29,7 @@ Sentia is a World Mini App where verified humans complete judgment tasks and rec
 
 - [Product Flows](./product-flows.md)
 - [Technical Architecture](./technical-architecture.md)
-- [Data Model](./data-model.md)
 - [World Integration](./world-integration.md)
-- [World Chain Reward Vault](./world-chain-reward-vault.md)
-- [MVP Build Plan](./mvp-build-plan.md)
 
 ## MVP Definition
 

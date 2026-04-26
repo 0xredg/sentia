@@ -1,31 +1,29 @@
 # Sentia Wiki
 
-This folder is the shared project context for builders, designers, and agents working on Sentia during the hackathon.
+This folder collects the clearest product, technical, and team context for Sentia.
 
 ## Purpose
 
-Use this wiki to centralize:
+Use this wiki to understand:
 
-- product vision
-- hackathon context
-- feature specs
-- technical decisions
-- user flows
-- demos and materials
+- what Sentia is building
+- why it is native to World
+- how the core product loop works
+- how the team can execute
 
-## Current docs
+## Docs
 
 - [Project Vision](./project-vision.md)
-- [World Build Hackathon Context](./world-build-hackathon-context.md)
-- [Hackathon Strategy](./hackathon-strategy.md)
-- [Architecture](./architecture/README.md)
-- [Submission Checklist](./submission-checklist.md)
 - [Pitch Outline](./pitch-outline.md)
 - [Team](./team.md)
+- [Product Flows](./architecture/product-flows.md)
+- [Technical Architecture](./architecture/technical-architecture.md)
+- [World Integration](./architecture/world-integration.md)
+- [Architecture Summary](./architecture/README.md)
 
 ## Writing principles
 
 - Keep documents short, concrete, and easy to scan
-- Prefer decisions and assumptions over vague ideas
-- Update docs as the project evolves during the hackathon
-- Write for fast onboarding: a new agent should understand the project in minutes
+- Prefer proof, working flows, and clear product reasoning over internal planning
+- Keep hackathon logistics, build checklists, and temporary implementation notes out of the public wiki
+- Write so a judge or reviewer can understand Sentia in minutes
