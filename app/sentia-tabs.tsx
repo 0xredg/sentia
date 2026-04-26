@@ -21,8 +21,22 @@ import {
   WALLET_AUTH_STATEMENT,
 } from "@/lib/constants";
 import { isMockAdminEnabled, isMockAdminUser } from "@/lib/mock-admin";
+import {
+  ChevronDown,
+  ListChecks,
+  UserRound,
+  WalletCards,
+  type LucideIcon,
+} from "lucide-react";
 
 const tabs = ["Feed", "Earnings", "Profile"] as const;
+type Tab = (typeof tabs)[number];
+
+const tabItems: Record<Tab, { Icon: LucideIcon; label: string }> = {
+  Feed: { Icon: ListChecks, label: "Feed" },
+  Earnings: { Icon: WalletCards, label: "Earn" },
+  Profile: { Icon: UserRound, label: "Profile" },
+};
 const companyLogoPaths: Record<string, string> = {
   adahealth: "/demo/feed-cards/company-profile-pics/ada-health.png",
   airbnb: "/demo/feed-cards/company-profile-pics/airbnb.png",
@@ -84,8 +98,6 @@ const companyLogoPaths: Record<string, string> = {
   zendesk: "/demo/feed-cards/company-profile-pics/zendesk.png",
 };
 
-type Tab = (typeof tabs)[number];
-
 type FeedTask = {
   id: string;
   requesterName: string;
@@ -141,6 +153,8 @@ type ProfileUser = {
 
 type ProfileStats = {
   completedTasks: number;
+  reliabilityPercent: number;
+  streakDays: number;
 };
 
 type WorldConfig = {
@@ -205,13 +219,34 @@ export function SentiaTabs() {
     setEarningsRefreshKey((currentKey) => currentKey + 1);
   }, []);
 
+  const handleTabChange = useCallback(
+    (tab: Tab) => {
+      if (tab === activeTab) {
+        return;
+      }
+
+      void MiniKit.sendHapticFeedback({
+        hapticsType: "selection-changed",
+        fallback: () => {
+          navigator.vibrate?.(10);
+
+          return {
+            status: "success",
+            version: 1,
+            timestamp: new Date().toISOString(),
+          };
+        },
+      }).catch(() => {
+        // Haptics are optional; tab navigation should never wait on them.
+      });
+
+      setActiveTab(tab);
+    },
+    [activeTab],
+  );
+
   const markTaskCompleted = useCallback(() => {
     refreshEarnings();
-    setProfileStats((currentStats) =>
-      currentStats
-        ? { completedTasks: currentStats.completedTasks + 1 }
-        : currentStats,
-    );
   }, [refreshEarnings]);
 
   const refreshFeed = useCallback(() => {
@@ -423,6 +458,7 @@ export function SentiaTabs() {
         return "User tasks reset.";
       }
 
+      await loadProfile();
       refreshEarnings();
       return "Processing tasks paid.";
     },
@@ -555,18 +591,23 @@ export function SentiaTabs() {
       </section>
 
       <nav className="tab-bar" aria-label="Primary navigation">
-        {tabs.map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            className="tab-button"
-            data-active={activeTab === tab}
-            aria-current={activeTab === tab ? "page" : undefined}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab}
-          </button>
-        ))}
+        {tabs.map((tab) => {
+          const { Icon, label } = tabItems[tab];
+
+          return (
+            <button
+              key={tab}
+              type="button"
+              className="tab-button"
+              data-active={activeTab === tab}
+              aria-current={activeTab === tab ? "page" : undefined}
+              onClick={() => handleTabChange(tab)}
+            >
+              <Icon className="tab-icon" aria-hidden="true" />
+              <span className="tab-label">{label}</span>
+            </button>
+          );
+        })}
       </nav>
 
       {worldConfig?.appId && rpContext ? (
@@ -584,7 +625,8 @@ export function SentiaTabs() {
           }}
           onError={(errorCode) => {
             setStatus("idle");
-            setError(`World ID verification failed: ${errorCode}`);
+            setError(null);
+            console.warn("World ID verification failed", errorCode);
           }}
         />
       ) : null}
@@ -1094,27 +1136,26 @@ function FeedTaskCard({
       data-feed-item-id={task.id}
     >
       <header className="feed-card-header">
-        <div className="feed-card-requester">
-          <p>
-            <span>From:</span>
-            <span className="feed-card-logo" aria-hidden="true">
-              {companyLogoPath ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={companyLogoPath} alt="" />
-              ) : (
-                requesterInitial
-              )}
+        <div className="feed-requester-lockup">
+          <span className="feed-card-logo" aria-hidden="true">
+            {companyLogoPath ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={companyLogoPath} alt="" />
+            ) : (
+              requesterInitial
+            )}
+          </span>
+          <div className="feed-card-meta">
+            <p>{task.requesterName}</p>
+            <span className="feed-reward-line">
+              Reward +{formatTokenAmount(task.rewardAmount)} {task.rewardToken}
             </span>
-            <span className="feed-task-reward">
-              +{formatTokenAmount(task.rewardAmount)} {task.rewardToken}
-            </span>
-          </p>
+          </div>
         </div>
 
-        <div className="feed-balance-wrap" aria-live="polite">
-          <div className="feed-balance-pill">
-            {formatTokenAmount(availableBalance)} WLD
-          </div>
+        <div className="feed-claim-total" aria-live="polite">
+          <span>To claim</span>
+          <strong>{formatTokenAmount(availableBalance)} WLD</strong>
           {earnedBump ? (
             <span key={earnedBump.animationKey} className="feed-balance-bump">
               +{formatTokenAmount(earnedBump.amount)} {earnedBump.token}
@@ -1123,14 +1164,18 @@ function FeedTaskCard({
         </div>
       </header>
 
+      <section className="feed-card-question" aria-label="Task question">
+        <p>{task.prompt}</p>
+      </section>
+
       <div className="feed-card-image-wrap">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={task.imagePath} alt="" className="feed-card-image-blur" />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={task.imagePath} alt="" className="feed-card-image" />
       </div>
 
-      <section className="feed-card-prompt" aria-label="Task question">
-        <p>{task.prompt}</p>
-
+      <section className="feed-card-answer" aria-label="Task answer">
         <div className="feed-answer-buttons">
           {getVisibleResponseOptions(task).map((option) => (
             <button
@@ -1148,6 +1193,7 @@ function FeedTaskCard({
             </button>
           ))}
         </div>
+        <p>Select an answer, then swipe up to submit.</p>
       </section>
     </article>
   );
@@ -1198,6 +1244,8 @@ function EarningsPanel({
   const [isLoading, setIsLoading] = useState(false);
   const [isClaiming, setIsClaiming] = useState(false);
   const [earningsError, setEarningsError] = useState<string | null>(null);
+  const [arePaidOperationsExpanded, setArePaidOperationsExpanded] =
+    useState(true);
 
   const loadEarnings = useCallback(async () => {
     setIsLoading(true);
@@ -1266,27 +1314,31 @@ function EarningsPanel({
 
   return (
     <div className="earnings-panel">
-      <p className="eyebrow">Sentia</p>
-      <h1 id="active-tab-title">Earnings</h1>
+      <p className="eyebrow" id="active-tab-title">
+        Earnings
+      </p>
 
       <section className="earnings-summary" aria-label="Earnings summary">
         <EarningsMetric
-          label="Available to claim"
-          value={`${formatTokenAmount(summary.available)} WLD`}
+          label="To claim"
+          value={formatTokenAmount(summary.available)}
+          detail="WLD"
         />
         <EarningsMetric
           label="Processing"
-          value={`${formatTokenAmount(summary.processing)} WLD`}
+          value={formatTokenAmount(summary.processing)}
+          detail="WLD"
         />
         <EarningsMetric
-          label="Total paid"
-          value={`${formatTokenAmount(summary.totalPaid)} WLD`}
+          label="Paid"
+          value={formatTokenAmount(summary.totalPaid)}
+          detail="WLD"
         />
       </section>
 
       <button
         type="button"
-        className="primary-action"
+        className="primary-action earnings-claim-action"
         disabled={!canClaim || isLoading}
         onClick={claimEarnings}
       >
@@ -1296,36 +1348,62 @@ function EarningsPanel({
       {earningsError ? <p className="profile-error">{earningsError}</p> : null}
 
       <section className="paid-operations" aria-label="Paid operations">
-        <h2>Paid operations</h2>
-        {isLoading ? (
-          <p className="earnings-muted">Loading earnings...</p>
-        ) : earnings?.paidOperations.length ? (
-          <ul>
-            {earnings.paidOperations.map((operation) => (
-              <li key={operation.id}>
-                <span>
-                  {formatTokenAmount(operation.amount)} {operation.token}
-                  {operation.requesterName ? ` (${operation.requesterName})` : ""}
-                </span>
-                <time dateTime={operation.paidAt}>
-                  {formatOperationDate(operation.paidAt)}
-                </time>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="earnings-muted">No paid operations yet.</p>
-        )}
+        <button
+          type="button"
+          className="paid-operations-toggle"
+          aria-expanded={arePaidOperationsExpanded}
+          aria-controls="paid-operations-content"
+          onClick={() =>
+            setArePaidOperationsExpanded((isExpanded) => !isExpanded)
+          }
+        >
+          <span>Paid operations</span>
+          <ChevronDown aria-hidden="true" className="paid-operations-icon" />
+        </button>
+        {arePaidOperationsExpanded ? (
+          <div id="paid-operations-content" className="paid-operations-content">
+            {isLoading ? (
+              <p className="earnings-muted">Loading earnings...</p>
+            ) : earnings?.paidOperations.length ? (
+              <ul>
+                {earnings.paidOperations.map((operation) => (
+                  <li key={operation.id}>
+                    <span>
+                      {formatTokenAmount(operation.amount)} {operation.token}
+                      {operation.requesterName
+                        ? ` (${operation.requesterName})`
+                        : ""}
+                    </span>
+                    <time dateTime={operation.paidAt}>
+                      {formatOperationDate(operation.paidAt)}
+                    </time>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="earnings-muted">No paid operations yet.</p>
+            )}
+          </div>
+        ) : null}
       </section>
     </div>
   );
 }
 
-function EarningsMetric({ label, value }: { label: string; value: string }) {
+function EarningsMetric({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+}) {
   return (
     <article className="earnings-metric">
       <span>{label}</span>
       <strong>{value}</strong>
+      <small>{detail}</small>
     </article>
   );
 }
@@ -1378,9 +1456,9 @@ function ProfilePanel({
   const avatarUrl = user?.avatar_url ?? previewProfile?.profilePictureUrl;
   const initials = useMemo(() => getInitials(displayName), [displayName]);
   const completedTasks = stats?.completedTasks ?? 0;
-  const completedTasksLabel = `${completedTasks} ${
-    completedTasks === 1 ? "task" : "tasks"
-  } completed`;
+  const reliabilityPercent = stats?.reliabilityPercent ?? 0;
+  const streakDays = stats?.streakDays ?? 0;
+  const rank = getProfileRank(completedTasks);
   const isBusy =
     status === "loading" ||
     status === "authenticating" ||
@@ -1433,90 +1511,120 @@ function ProfilePanel({
   );
 
   return (
-    <div className="profile-panel">
-      {user ? (
-        <button
-          type="button"
-          className="logout-button"
-          disabled={isBusy}
-          onClick={onLogout}
-          aria-label="Log out"
-        >
-          {status === "logging_out" ? "..." : "Log out"}
-        </button>
-      ) : null}
-
-      <p className="eyebrow">Profile</p>
-
-      <div className="avatar" aria-hidden="true">
-        {avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={avatarUrl} alt="" />
-        ) : (
-          <span>{initials}</span>
-        )}
-      </div>
-
-      <div className="profile-heading">
-        <h1 id="active-tab-title" onClick={handleProfileNameClick}>
-          {displayName}
-        </h1>
-        <p>
-          {user
-            ? isVerified
-              ? "Verified human"
-              : hasBuilderAccess
-                ? "Identity not verified yet"
-                : "Identity not verified yet"
-            : isMiniKitInitializing
-              ? "Connecting to World App..."
-              : "Connect your World wallet to start"}
-        </p>
-      </div>
-
-      {user ? <div className="profile-stats">{completedTasksLabel}</div> : null}
-
-      {isVerified ? (
-        <div className="verified-status" role="status">
-          <span aria-hidden="true">✓</span>
-          Verified
-        </div>
-      ) : user ? (
-        <div className="profile-actions">
-          {hasBuilderAccess ? (
-            <div className="builder-status" role="status">
-              <span aria-hidden="true">✓</span>
-              World3 hacker
-            </div>
-          ) : null}
-
+    <div className="profile-panel" data-authenticated={user ? "true" : "false"}>
+      <div className="profile-topbar">
+        <p className="eyebrow">Profile</p>
+        {user ? (
           <button
             type="button"
-            className="primary-action"
+            className="logout-button"
             disabled={isBusy}
-            onClick={onVerify}
+            onClick={onLogout}
+            aria-label="Log out"
           >
-            {status === "verifying" ? "Verifying..." : "Verify identity"}
+            {status === "logging_out" ? "..." : "Log out"}
+          </button>
+        ) : null}
+      </div>
+
+      {!user ? (
+        <div className="profile-logged-out-state">
+          <button
+            type="button"
+            className="primary-action profile-connect-action"
+            disabled={isBusy || isMiniKitInitializing || !isWorldApp}
+            onClick={onConnectWallet}
+          >
+            {status === "authenticating" || isMiniKitInitializing
+              ? "Connecting..."
+              : "Connect World wallet"}
           </button>
         </div>
       ) : (
-        <button
-          type="button"
-          className="primary-action"
-          disabled={isBusy || isMiniKitInitializing || !isWorldApp}
-          onClick={onConnectWallet}
-        >
-          {status === "authenticating" || isMiniKitInitializing
-            ? "Connecting..."
-            : "Connect World wallet"}
-        </button>
-      )}
+        <>
+          <div className="profile-identity-row">
+            <div className="avatar" aria-hidden="true">
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatarUrl} alt="" />
+              ) : (
+                <span>{initials}</span>
+              )}
+            </div>
 
-      {miniKitInstallState === false ? (
-        <p className="profile-note">
-          Open Sentia inside World App to connect and verify.
-        </p>
-      ) : null}
+            <div className="profile-heading">
+              <h1 id="active-tab-title" onClick={handleProfileNameClick}>
+                {displayName}
+              </h1>
+              <p className="profile-level-copy">
+                Level {rank.level}
+                <span>
+                  {rank.tasksToNextLevel} tasks to Level {rank.nextLevel}
+                </span>
+              </p>
+            </div>
+          </div>
+
+          <section
+            className="profile-progress"
+            aria-label={`Level progress ${rank.progressPercent}%`}
+          >
+            <div className="profile-progress-copy">
+              <span>Progress to next level</span>
+              <strong>{rank.progressPercent}%</strong>
+            </div>
+            <div className="profile-progress-track">
+              <div
+                className="profile-progress-fill"
+                style={{ width: `${rank.progressPercent}%` }}
+              />
+            </div>
+          </section>
+
+          <section className="profile-metric-grid" aria-label="Profile metrics">
+            <ProfileMetric
+              label="Tasks"
+              value={String(completedTasks)}
+              detail="completed"
+            />
+            <ProfileMetric
+              label="Reliability"
+              value={`${reliabilityPercent}%`}
+              detail="accepted"
+            />
+            <ProfileMetric
+              label="Streak"
+              value={String(streakDays)}
+              detail={streakDays === 1 ? "day" : "days"}
+            />
+          </section>
+
+          {isVerified ? (
+            <div className="verified-status" role="status">
+              <span aria-hidden="true">✓</span>
+              Verified
+            </div>
+          ) : (
+            <div className="profile-actions">
+              <button
+                type="button"
+                className="primary-action"
+                disabled={isBusy}
+                onClick={onVerify}
+              >
+                {status === "verifying" ? "Verifying..." : "Verify identity"}
+              </button>
+
+              {hasBuilderAccess ? (
+                <div className="builder-status" role="status">
+                  <span aria-hidden="true">✓</span>
+                  World3 hacker
+                </div>
+              ) : null}
+            </div>
+          )}
+        </>
+      )}
 
       {error ? <p className="profile-error">{error}</p> : null}
 
@@ -1573,6 +1681,37 @@ function ProfilePanel({
       ) : null}
     </div>
   );
+}
+
+function ProfileMetric({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <article className="profile-metric-card">
+      <span>{label}</span>
+      <strong>{value}</strong>
+      <small>{detail}</small>
+    </article>
+  );
+}
+
+function getProfileRank(completedTasks: number) {
+  const normalizedTasks = Math.max(0, completedTasks);
+  const level = Math.floor(normalizedTasks / 10) + 1;
+  const tasksIntoLevel = normalizedTasks % 10;
+
+  return {
+    level,
+    nextLevel: level + 1,
+    tasksToNextLevel: 10 - tasksIntoLevel,
+    progressPercent: tasksIntoLevel * 10,
+  };
 }
 
 function getInitials(name: string) {
