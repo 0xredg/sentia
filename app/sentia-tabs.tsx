@@ -1627,6 +1627,11 @@ function ProfilePanel({
 
       {!user ? (
         <div className="profile-logged-out-state">
+          <div className="profile-logged-out-lockup">
+            <h1 id="active-tab-title">SENTIA</h1>
+            <p>{t("loggedOutTagline")}</p>
+          </div>
+
           <button
             type="button"
             className="primary-action profile-connect-action"
