@@ -5,6 +5,13 @@ Sentia turns human judgment into a fast, trusted workforce for AI teams: verifie
 
 Live app: https://sentia-nine.vercel.app/
 
+## What we built
+
+- **World Mini App UX**: verified users can browse short AI-assistance tasks, answer with quick mobile-native interactions, and claim rewards once their work is accepted.
+- **Feed and earn flow**: tasks are presented as focused cards with clear prompts, lightweight answer choices, and a swipe-style submission flow built for mobile speed.
+- **Profile and reputation**: users can track level progress, completed tasks, reliability, streaks, and World ID verification status.
+- **Reward vault**: the blockchain layer includes a Solidity vault contract for holding task reward liquidity and distributing payouts transparently from a controlled on-chain pool.
+
 ## App preview
 
 <p>
