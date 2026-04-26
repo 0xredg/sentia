@@ -22,7 +22,7 @@ Sentia is a World Mini App where verified humans complete judgment tasks and rec
 - Keep the demo loop short: verify, answer, earn, see payout.
 - Store all product state in Supabase, not client memory.
 - Treat the backend as the authority for verification, task completion, and payouts.
-- Keep World secrets and treasury keys server-only.
+- Keep World secrets and payout/vault keys server-only.
 - Prefer clear operational states over hidden magic.
 
 ## Documents

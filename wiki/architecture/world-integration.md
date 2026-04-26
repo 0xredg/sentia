@@ -102,15 +102,17 @@ Behavior:
 
 ## Payout Strategy
 
-Sentia pays workers with real WLD from a small treasury wallet.
+Sentia pays workers with real WLD from a pre-funded World Chain reward vault.
 
-The payout system is backend-controlled:
+The hackathon payout system is backend-controlled:
 
 - user completes task
 - backend creates pending earning
-- payout worker batches or processes pending earnings
-- treasury wallet signs WLD transfer to worker wallet
-- backend records transaction status
+- user signs an EIP-191 claim message with `MiniKit.signMessage`
+- backend verifies the signature against the user's World Wallet
+- backend calls `SentiaRewardVault.payoutBatch`
+- vault transfers WLD to the worker wallet
+- backend records transaction status and Worldscan URL
 - earning becomes paid only after confirmation
 
 Recommended MVP constraints:
@@ -118,10 +120,27 @@ Recommended MVP constraints:
 - small fixed reward amounts
 - one payout attempt per earning at a time
 - manual admin retry for failed payouts
-- low-balance alert in `treasury_events`
-- no smart contract escrow for the hackathon
+- low-balance alert for the reward vault
+- no full requester escrow for the hackathon
 
-Do not use MiniKit `Pay` to pay workers from Sentia. `Pay` requests payment from the user. Worker payouts require the Sentia treasury to send funds.
+Do not use MiniKit `Pay` to pay workers from Sentia. `Pay` requests payment from the user. Worker payouts require Sentia's backend-owned payout key to release funds from the reward vault.
+
+### Claim Signatures
+
+Sentia uses `MiniKit.signMessage()` for claim authorization. The signed message includes the worker wallet, vault address, WLD token address, chain ID, earning IDs hash, amount in wei, nonce, and deadline.
+
+World Wallet signatures can validate through direct EOA recovery or EIP-1271 contract-wallet verification. The smart contract does not verify the signature; the backend verifies it before calling the vault.
+
+### Vault Role
+
+The current vault is a pre-funded reward vault, not a full campaign escrow:
+
+- funds are transferred to the vault operationally;
+- the backend payout key owns the vault;
+- the vault prevents duplicate payouts by `earningIdHash`;
+- task validation and quality checks remain in the backend.
+
+Future production marketplace contracts can add requester deposits, campaign-level budgets, refunds, and dispute handling.
 
 ## Developer Portal Requirements
 
@@ -130,15 +149,16 @@ Before production testing:
 - complete World ID 4.0 Managed setup
 - add `RP_SIGNING_KEY` to server environment
 - configure Mini App metadata and test URL
-- allowlist contracts/tokens if any MiniKit transaction commands are used
+- configure World Chain RPC and vault runtime env vars
 - create or store any Developer Portal API key needed for transaction verification
 
 ## Security Checklist
 
 - `RP_SIGNING_KEY` is server-only.
-- Treasury private key is server-only and never committed.
+- Payout private key is server-only and never committed.
 - Supabase service role key is server-only.
-- Payout route is protected by job/admin auth.
+- Real payout route verifies claim intent, signature, nonce, deadline, wallet, vault token, and vault balance.
+- Reconciliation verifies `vault.paid(earningIdHash)` before finalizing DB state.
 - Proof verification result is checked on backend before marking user verified.
 - Client cannot create earnings or payout attempts directly.
 - Duplicate task responses are blocked by database constraint.
