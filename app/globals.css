@@ -619,6 +619,43 @@ h1 {
   gap: 16px;
 }
 
+.profile-topbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.language-switch {
+  min-height: 44px;
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-raised);
+}
+
+.language-switch-option {
+  min-width: 48px;
+  min-height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.language-switch-option[data-active="true"] {
+  background: var(--active);
+  color: var(--active-text);
+}
+
 .profile-logged-out-state {
   display: grid;
   place-items: center;

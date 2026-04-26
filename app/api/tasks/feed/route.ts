@@ -132,6 +132,7 @@ export async function GET() {
 
       return {
         id: task.id,
+        demoSourceId: task.demo_source_id,
         requesterName: task.requester_name,
         prompt: task.prompt,
         taskType,

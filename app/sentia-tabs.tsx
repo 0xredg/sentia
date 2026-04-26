@@ -20,6 +20,15 @@ import {
   PROFILE_VERIFICATION_ACTION,
   WALLET_AUTH_STATEMENT,
 } from "@/lib/constants";
+import {
+  getIntlLocale,
+  getResponseOptionLabel,
+  getTaskPrompt,
+  isLocale,
+  localizeServerError,
+  translate,
+  type Locale,
+} from "@/lib/i18n";
 import { isMockAdminEnabled, isMockAdminUser } from "@/lib/mock-admin";
 import {
   ChevronDown,
@@ -32,10 +41,13 @@ import {
 const tabs = ["Feed", "Earnings", "Profile"] as const;
 type Tab = (typeof tabs)[number];
 
-const tabItems: Record<Tab, { Icon: LucideIcon; label: string }> = {
-  Feed: { Icon: ListChecks, label: "Feed" },
-  Earnings: { Icon: WalletCards, label: "Earn" },
-  Profile: { Icon: UserRound, label: "Profile" },
+const tabItems: Record<
+  Tab,
+  { Icon: LucideIcon; labelKey: "feed" | "earn" | "profile" }
+> = {
+  Feed: { Icon: ListChecks, labelKey: "feed" },
+  Earnings: { Icon: WalletCards, labelKey: "earn" },
+  Profile: { Icon: UserRound, labelKey: "profile" },
 };
 const companyLogoPaths: Record<string, string> = {
   adahealth: "/demo/feed-cards/company-profile-pics/ada-health.png",
@@ -100,6 +112,7 @@ const companyLogoPaths: Record<string, string> = {
 
 type FeedTask = {
   id: string;
+  demoSourceId: number | null;
   requesterName: string;
   prompt: string;
   taskType:
@@ -177,6 +190,14 @@ type MiniKitPreviewProfile = {
 };
 
 type MockAdminAction = "reset_users" | "reset_tasks" | "pay_tasks";
+type TFunction = (
+  key: Parameters<typeof translate>[1],
+  values?: Parameters<typeof translate>[2],
+) => string;
+type ServerErrorFunction = (
+  message: unknown,
+  fallbackKey: Parameters<typeof translate>[1],
+) => string;
 
 async function resolveWorldProfile(walletAddress: string) {
   const immediateProfile = {
@@ -203,6 +224,7 @@ async function resolveWorldProfile(walletAddress: string) {
 export function SentiaTabs() {
   const { isInstalled } = useMiniKit();
   const [activeTab, setActiveTab] = useState<Tab>("Feed");
+  const [locale, setLocale] = useState<Locale>("en");
   const [user, setUser] = useState<ProfileUser | null>(null);
   const [profileStats, setProfileStats] = useState<ProfileStats | null>(null);
   const [previewProfile, setPreviewProfile] =
@@ -214,6 +236,31 @@ export function SentiaTabs() {
   const [error, setError] = useState<string | null>(null);
   const [earningsRefreshKey, setEarningsRefreshKey] = useState(0);
   const [feedRefreshKey, setFeedRefreshKey] = useState(0);
+  const t = useCallback(
+    (
+      key: Parameters<typeof translate>[1],
+      values?: Parameters<typeof translate>[2],
+    ) => translate(locale, key, values),
+    [locale],
+  );
+  const serverError = useCallback(
+    (message: unknown, fallbackKey: Parameters<typeof translate>[1]) =>
+      localizeServerError(locale, message, fallbackKey),
+    [locale],
+  );
+
+  useEffect(() => {
+    const savedLocale = window.localStorage.getItem("sentia-locale");
+
+    if (isLocale(savedLocale)) {
+      setLocale(savedLocale);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("sentia-locale", locale);
+    document.documentElement.lang = locale === "ko" ? "ko" : "en";
+  }, [locale]);
 
   const refreshEarnings = useCallback(() => {
     setEarningsRefreshKey((currentKey) => currentKey + 1);
@@ -267,11 +314,11 @@ export function SentiaTabs() {
       const config = await configResponse.json();
 
       if (!profileResponse.ok) {
-        throw new Error(profile.error ?? "Could not load profile.");
+        throw new Error(serverError(profile.error, "errorLoadProfile"));
       }
 
       if (!configResponse.ok) {
-        throw new Error(config.error ?? "Could not load World config.");
+        throw new Error(serverError(config.error, "errorLoadWorldConfig"));
       }
 
       setUser(profile.user);
@@ -281,12 +328,12 @@ export function SentiaTabs() {
       setError(
         loadError instanceof Error
           ? loadError.message
-          : "Could not load profile.",
+          : t("errorLoadProfile"),
       );
     } finally {
       setStatus("idle");
     }
-  }, []);
+  }, [serverError, t]);
 
   useEffect(() => {
     void loadProfile();
@@ -341,8 +388,8 @@ export function SentiaTabs() {
     if (isInstalled !== true) {
       setError(
         isInstalled === undefined
-          ? "Sentia is still connecting to World App. Try again in a moment."
-          : "Open Sentia inside World App to connect your World wallet.",
+          ? t("errorWorldConnecting")
+          : t("errorOpenWorldApp"),
       );
       setStatus("idle");
       return;
@@ -353,7 +400,7 @@ export function SentiaTabs() {
       const { nonce, error: nonceError } = await nonceResponse.json();
 
       if (!nonceResponse.ok) {
-        throw new Error(nonceError ?? "Could not create auth nonce.");
+        throw new Error(serverError(nonceError, "errorCreateNonce"));
       }
 
       const result = await MiniKit.walletAuth({
@@ -364,7 +411,7 @@ export function SentiaTabs() {
       });
 
       if (result.executedWith === "fallback") {
-        throw new Error("Wallet Auth must be completed inside World App.");
+        throw new Error(t("errorWalletAuthWorldApp"));
       }
 
       const profile = await resolveWorldProfile(result.data.address);
@@ -382,7 +429,7 @@ export function SentiaTabs() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error ?? "Could not complete Wallet Auth.");
+        throw new Error(serverError(data.error, "errorCompleteWalletAuth"));
       }
 
       setUser(data.user);
@@ -394,12 +441,12 @@ export function SentiaTabs() {
       setError(
         authError instanceof Error
           ? authError.message
-          : "Could not connect World wallet.",
+          : t("errorConnectWallet"),
       );
     } finally {
       setStatus("idle");
     }
-  }, [isInstalled, loadProfile]);
+  }, [isInstalled, loadProfile, serverError, t]);
 
   const logout = useCallback(async () => {
     setError(null);
@@ -410,7 +457,7 @@ export function SentiaTabs() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error ?? "Could not log out.");
+        throw new Error(serverError(data.error, "errorLogOut"));
       }
 
       setUser(null);
@@ -420,12 +467,12 @@ export function SentiaTabs() {
       setIsVerifyOpen(false);
     } catch (logoutError) {
       setError(
-        logoutError instanceof Error ? logoutError.message : "Could not log out.",
+        logoutError instanceof Error ? logoutError.message : t("errorLogOut"),
       );
     } finally {
       setStatus("idle");
     }
-  }, []);
+  }, [serverError, t]);
 
   const runMockAdminAction = useCallback(
     async (action: MockAdminAction) => {
@@ -437,7 +484,7 @@ export function SentiaTabs() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error ?? "Mock admin action failed.");
+        throw new Error(serverError(data.error, "errorMockAdmin"));
       }
 
       if (action === "reset_users") {
@@ -448,33 +495,33 @@ export function SentiaTabs() {
         setIsVerifyOpen(false);
         refreshEarnings();
         refreshFeed();
-        return "Users reset.";
+        return t("usersReset");
       }
 
       if (action === "reset_tasks") {
         await loadProfile();
         refreshEarnings();
         refreshFeed();
-        return "User tasks reset.";
+        return t("userTasksReset");
       }
 
       await loadProfile();
       refreshEarnings();
-      return "Processing tasks paid.";
+      return t("processingTasksPaid");
     },
-    [loadProfile, refreshEarnings, refreshFeed],
+    [loadProfile, refreshEarnings, refreshFeed, serverError, t],
   );
 
   const startVerification = useCallback(async () => {
     setError(null);
 
     if (!user) {
-      setError("Connect your World wallet before verifying your identity.");
+      setError(t("errorConnectBeforeVerify"));
       return;
     }
 
     if (!worldConfig?.appId || !worldConfig.rpId) {
-      setError("World app id or RP id is missing from the server config.");
+      setError(t("errorMissingWorldConfig"));
       return;
     }
 
@@ -487,7 +534,7 @@ export function SentiaTabs() {
       const signature = await response.json();
 
       if (!response.ok) {
-        throw new Error(signature.error ?? "Could not prepare verification.");
+        throw new Error(serverError(signature.error, "errorPrepareVerification"));
       }
 
       setRpContext({
@@ -502,10 +549,10 @@ export function SentiaTabs() {
       setError(
         verificationError instanceof Error
           ? verificationError.message
-          : "Could not start verification.",
+          : t("errorStartVerification"),
       );
     }
-  }, [user, worldConfig]);
+  }, [serverError, t, user, worldConfig]);
 
   const verifyProof = useCallback(async (idkitResponse: IDKitResult) => {
     setStatus("verifying");
@@ -518,12 +565,12 @@ export function SentiaTabs() {
 
     if (!response.ok) {
       setStatus("idle");
-      throw new Error(data.error ?? "Verification failed.");
+      throw new Error(serverError(data.error, "errorVerificationFailed"));
     }
 
     setUser(data.user);
     setStatus("idle");
-  }, []);
+  }, [serverError]);
 
   const unlockBuilderAccess = useCallback(
     async (code: string) => {
@@ -539,7 +586,7 @@ export function SentiaTabs() {
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data.error ?? "Could not unlock builder access.");
+          throw new Error(serverError(data.error, "errorUnlockBuilder"));
         }
 
         setUser(data.user);
@@ -548,14 +595,14 @@ export function SentiaTabs() {
         setError(
           builderError instanceof Error
             ? builderError.message
-            : "Could not unlock builder access.",
+            : t("errorUnlockBuilder"),
         );
         throw builderError;
       } finally {
         setStatus("idle");
       }
     },
-    [loadProfile],
+    [loadProfile, serverError, t],
   );
 
   return (
@@ -564,6 +611,9 @@ export function SentiaTabs() {
         {activeTab === "Feed" ? (
           <FeedPanel
             key={feedRefreshKey}
+            locale={locale}
+            t={t}
+            serverError={serverError}
             onBuilderAccess={unlockBuilderAccess}
             onEarningsChanged={refreshEarnings}
             onTaskCompleted={markTaskCompleted}
@@ -576,6 +626,9 @@ export function SentiaTabs() {
             miniKitInstallState={isInstalled}
             status={status}
             error={error}
+            locale={locale}
+            t={t}
+            onLocaleChange={setLocale}
             onConnectWallet={connectWallet}
             onVerify={startVerification}
             onLogout={logout}
@@ -584,15 +637,19 @@ export function SentiaTabs() {
         ) : (
           <EarningsPanel
             isActive={activeTab === "Earnings"}
+            locale={locale}
+            t={t}
+            serverError={serverError}
             refreshKey={earningsRefreshKey}
             onClaimed={refreshEarnings}
           />
         )}
       </section>
 
-      <nav className="tab-bar" aria-label="Primary navigation">
+      <nav className="tab-bar" aria-label={t("primaryNavigation")}>
         {tabs.map((tab) => {
-          const { Icon, label } = tabItems[tab];
+          const { Icon, labelKey } = tabItems[tab];
+          const label = t(labelKey);
 
           return (
             <button
@@ -635,10 +692,16 @@ export function SentiaTabs() {
 }
 
 function FeedPanel({
+  locale,
+  t,
+  serverError,
   onBuilderAccess,
   onEarningsChanged,
   onTaskCompleted,
 }: {
+  locale: Locale;
+  t: TFunction;
+  serverError: ServerErrorFunction;
   onBuilderAccess: (code: string) => void;
   onEarningsChanged: () => void;
   onTaskCompleted: () => void;
@@ -723,19 +786,19 @@ function FeedPanel({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error ?? "Could not load feed tasks.");
+        throw new Error(serverError(data.error, "errorLoadFeed"));
       }
 
       setTasks(data.tasks ?? []);
     } catch (error) {
       setFeedError(
-        error instanceof Error ? error.message : "Could not load feed tasks.",
+        error instanceof Error ? error.message : t("errorLoadFeed"),
       );
       setTasks([]);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [serverError, t]);
 
   const loadAvailableBalance = useCallback(async () => {
     try {
@@ -767,13 +830,19 @@ function FeedPanel({
         setFeedError(
           error instanceof Error
             ? error.message
-            : "Could not unlock builder access.",
+            : t("errorUnlockBuilder"),
         );
       } finally {
         setIsBuilderAccessSubmitting(false);
       }
     },
-    [builderAccessCode, loadAvailableBalance, loadFeedTasks, onBuilderAccess],
+    [
+      builderAccessCode,
+      loadAvailableBalance,
+      loadFeedTasks,
+      onBuilderAccess,
+      t,
+    ],
   );
 
   useEffect(() => {
@@ -853,10 +922,10 @@ function FeedPanel({
           }
 
           if (response.status === 401 || data.error === "verification_required") {
-            throw new Error("Connect and verify your profile before answering.");
+            throw new Error(t("errorVerifyBeforeAnswer"));
           }
 
-          throw new Error(data.error ?? "Could not submit answer.");
+          throw new Error(serverError(data.error, "errorSubmitAnswer"));
         }
 
         setEarnedBump({
@@ -873,7 +942,7 @@ function FeedPanel({
         }, 260);
       } catch (error) {
         setFeedError(
-          error instanceof Error ? error.message : "Could not submit answer.",
+          error instanceof Error ? error.message : t("errorSubmitAnswer"),
         );
         scrollFeedToStart();
         const nextSubmittedTaskIds = { ...submittedTaskIdsRef.current };
@@ -902,6 +971,8 @@ function FeedPanel({
       removeTask,
       scrollFeedToStart,
       scrollToFeedItem,
+      serverError,
+      t,
     ],
   );
 
@@ -1003,17 +1074,18 @@ function FeedPanel({
     <div className="feed-shell">
       <div className="feed-panel" ref={feedRef}>
         <h1 id="active-tab-title" className="sr-only">
-          Feed
+          {t("feed")}
         </h1>
 
         {isLoading ? (
-          <FeedStatusCard message="Loading feed..." />
+          <FeedStatusCard message={t("loadingFeed")} t={t} />
         ) : feedError ? (
           <FeedStatusCard
             message={feedError}
             showBuilderAccess={
-              feedError === "Connect and verify your profile before answering."
+              feedError === t("errorVerifyBeforeAnswer")
             }
+            t={t}
             isBuilderAccessOpen={isBuilderAccessOpen}
             builderAccessCode={builderAccessCode}
             isBuilderAccessSubmitting={isBuilderAccessSubmitting}
@@ -1022,13 +1094,15 @@ function FeedPanel({
             onSubmitBuilderAccess={submitBuilderAccess}
           />
         ) : tasks.length === 0 ? (
-          <FeedStatusCard message="No new tasks available. Come back later." />
+          <FeedStatusCard message={t("noTasks")} t={t} />
         ) : (
           <>
             {tasks.map((task) => (
               <FeedTaskCard
                 key={task.id}
                 task={task}
+                locale={locale}
+                t={t}
                 availableBalance={availableBalance}
                 selectedAnswer={selectedAnswers[task.id] ?? null}
                 isSubmitting={submittingTaskIds[task.id] === true}
@@ -1038,7 +1112,7 @@ function FeedPanel({
                 onToggleAnswer={toggleAnswer}
               />
             ))}
-            <FeedStatusCard message="No new tasks available. Come back later." />
+            <FeedStatusCard message={t("noTasks")} t={t} />
           </>
         )}
       </div>
@@ -1048,6 +1122,7 @@ function FeedPanel({
 
 function FeedStatusCard({
   message,
+  t,
   showBuilderAccess = false,
   isBuilderAccessOpen = false,
   builderAccessCode = "",
@@ -1057,6 +1132,7 @@ function FeedStatusCard({
   onSubmitBuilderAccess,
 }: {
   message: string;
+  t: TFunction;
   showBuilderAccess?: boolean;
   isBuilderAccessOpen?: boolean;
   builderAccessCode?: string;
@@ -1079,8 +1155,8 @@ function FeedStatusCard({
               value={builderAccessCode}
               disabled={isBuilderAccessSubmitting}
               autoComplete="off"
-              aria-label="Builder access password"
-              placeholder="Password"
+              aria-label={t("builderPassword")}
+              placeholder={t("password")}
               onChange={(event) =>
                 onBuilderAccessCodeChange?.(event.target.value)
               }
@@ -1090,7 +1166,7 @@ function FeedStatusCard({
               className="secondary-action"
               disabled={isBuilderAccessSubmitting || builderAccessCode.length === 0}
             >
-              {isBuilderAccessSubmitting ? "Checking..." : "Access"}
+              {isBuilderAccessSubmitting ? t("checking") : t("access")}
             </button>
           </form>
         ) : (
@@ -1099,7 +1175,7 @@ function FeedStatusCard({
             className="secondary-action"
             onClick={onOpenBuilderAccess}
           >
-            World3 Builder? Access the app.
+            {t("builderAccessCta")}
           </button>
         )
       ) : null}
@@ -1109,6 +1185,8 @@ function FeedStatusCard({
 
 function FeedTaskCard({
   task,
+  locale,
+  t,
   availableBalance,
   selectedAnswer,
   isSubmitting,
@@ -1116,6 +1194,8 @@ function FeedTaskCard({
   onToggleAnswer,
 }: {
   task: FeedTask;
+  locale: Locale;
+  t: TFunction;
   availableBalance: string;
   selectedAnswer: string | null;
   isSubmitting: boolean;
@@ -1148,13 +1228,16 @@ function FeedTaskCard({
           <div className="feed-card-meta">
             <p>{task.requesterName}</p>
             <span className="feed-reward-line">
-              Reward +{formatTokenAmount(task.rewardAmount)} {task.rewardToken}
+              {t("reward", {
+                amount: formatTokenAmount(task.rewardAmount),
+                token: task.rewardToken,
+              })}
             </span>
           </div>
         </div>
 
         <div className="feed-claim-total" aria-live="polite">
-          <span>To claim</span>
+          <span>{t("toClaim")}</span>
           <strong>{formatTokenAmount(availableBalance)} WLD</strong>
           {earnedBump ? (
             <span key={earnedBump.animationKey} className="feed-balance-bump">
@@ -1164,8 +1247,8 @@ function FeedTaskCard({
         </div>
       </header>
 
-      <section className="feed-card-question" aria-label="Task question">
-        <p>{task.prompt}</p>
+      <section className="feed-card-question" aria-label={t("taskQuestion")}>
+        <p>{getTaskPrompt(locale, task.demoSourceId, task.prompt)}</p>
       </section>
 
       <div className="feed-card-image-wrap">
@@ -1175,9 +1258,9 @@ function FeedTaskCard({
         <img src={task.imagePath} alt="" className="feed-card-image" />
       </div>
 
-      <section className="feed-card-answer" aria-label="Task answer">
+      <section className="feed-card-answer" aria-label={t("taskAnswer")}>
         <div className="feed-answer-buttons">
-          {getVisibleResponseOptions(task).map((option) => (
+          {getVisibleResponseOptions(task, locale).map((option) => (
             <button
               key={option.value}
               type="button"
@@ -1193,7 +1276,7 @@ function FeedTaskCard({
             </button>
           ))}
         </div>
-        <p>Select an answer, then swipe up to submit.</p>
+        <p>{t("submitHint")}</p>
       </section>
     </article>
   );
@@ -1217,7 +1300,7 @@ function formatTokenAmount(amount: string) {
   return numericAmount.toFixed(2).replace(/\.?0+$/, "");
 }
 
-function getVisibleResponseOptions(task: FeedTask) {
+function getVisibleResponseOptions(task: FeedTask, locale: Locale) {
   if (task.responseType === "thumbs") {
     return task.responseOptions.map((option) => ({
       value: option,
@@ -1227,16 +1310,22 @@ function getVisibleResponseOptions(task: FeedTask) {
 
   return task.responseOptions.map((option) => ({
     value: option,
-    label: option,
+    label: getResponseOptionLabel(locale, option),
   }));
 }
 
 function EarningsPanel({
   isActive,
+  locale,
+  t,
+  serverError,
   refreshKey,
   onClaimed,
 }: {
   isActive: boolean;
+  locale: Locale;
+  t: TFunction;
+  serverError: ServerErrorFunction;
   refreshKey: number;
   onClaimed: () => void;
 }) {
@@ -1256,19 +1345,19 @@ function EarningsPanel({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error ?? "Could not load earnings.");
+        throw new Error(serverError(data.error, "errorLoadEarnings"));
       }
 
       setEarnings(data);
     } catch (error) {
       setEarningsError(
-        error instanceof Error ? error.message : "Could not load earnings.",
+        error instanceof Error ? error.message : t("errorLoadEarnings"),
       );
       setEarnings(null);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [serverError, t]);
 
   useEffect(() => {
     if (!isActive) {
@@ -1288,22 +1377,22 @@ function EarningsPanel({
 
       if (!response.ok) {
         if (response.status === 401 || data.error === "verification_required") {
-          throw new Error("Connect and verify your profile before claiming.");
+          throw new Error(t("errorVerifyBeforeClaim"));
         }
 
-        throw new Error(data.error ?? "Could not claim earnings.");
+        throw new Error(serverError(data.error, "errorClaimEarnings"));
       }
 
       onClaimed();
       await loadEarnings();
     } catch (error) {
       setEarningsError(
-        error instanceof Error ? error.message : "Could not claim earnings.",
+        error instanceof Error ? error.message : t("errorClaimEarnings"),
       );
     } finally {
       setIsClaiming(false);
     }
-  }, [loadEarnings, onClaimed]);
+  }, [loadEarnings, onClaimed, serverError, t]);
 
   const summary = earnings?.summary ?? {
     available: "0",
@@ -1315,22 +1404,22 @@ function EarningsPanel({
   return (
     <div className="earnings-panel">
       <p className="eyebrow" id="active-tab-title">
-        Earnings
+        {t("earnings")}
       </p>
 
-      <section className="earnings-summary" aria-label="Earnings summary">
+      <section className="earnings-summary" aria-label={t("earnings")}>
         <EarningsMetric
-          label="To claim"
+          label={t("toClaim")}
           value={formatTokenAmount(summary.available)}
           detail="WLD"
         />
         <EarningsMetric
-          label="Processing"
+          label={t("processing")}
           value={formatTokenAmount(summary.processing)}
           detail="WLD"
         />
         <EarningsMetric
-          label="Paid"
+          label={t("paid")}
           value={formatTokenAmount(summary.totalPaid)}
           detail="WLD"
         />
@@ -1342,12 +1431,12 @@ function EarningsPanel({
         disabled={!canClaim || isLoading}
         onClick={claimEarnings}
       >
-        {isClaiming ? "Claiming..." : "Claim"}
+        {isClaiming ? t("claiming") : t("claim")}
       </button>
 
       {earningsError ? <p className="profile-error">{earningsError}</p> : null}
 
-      <section className="paid-operations" aria-label="Paid operations">
+      <section className="paid-operations" aria-label={t("paidOperations")}>
         <button
           type="button"
           className="paid-operations-toggle"
@@ -1357,13 +1446,13 @@ function EarningsPanel({
             setArePaidOperationsExpanded((isExpanded) => !isExpanded)
           }
         >
-          <span>Paid operations</span>
+          <span>{t("paidOperations")}</span>
           <ChevronDown aria-hidden="true" className="paid-operations-icon" />
         </button>
         {arePaidOperationsExpanded ? (
           <div id="paid-operations-content" className="paid-operations-content">
             {isLoading ? (
-              <p className="earnings-muted">Loading earnings...</p>
+              <p className="earnings-muted">{t("loadingEarnings")}</p>
             ) : earnings?.paidOperations.length ? (
               <ul>
                 {earnings.paidOperations.map((operation) => (
@@ -1375,13 +1464,13 @@ function EarningsPanel({
                         : ""}
                     </span>
                     <time dateTime={operation.paidAt}>
-                      {formatOperationDate(operation.paidAt)}
+                      {formatOperationDate(operation.paidAt, locale)}
                     </time>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="earnings-muted">No paid operations yet.</p>
+              <p className="earnings-muted">{t("noPaidOperations")}</p>
             )}
           </div>
         ) : null}
@@ -1408,8 +1497,8 @@ function EarningsMetric({
   );
 }
 
-function formatOperationDate(value: string) {
-  return new Intl.DateTimeFormat(undefined, {
+function formatOperationDate(value: string, locale: Locale) {
+  return new Intl.DateTimeFormat(getIntlLocale(locale), {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -1423,6 +1512,9 @@ function ProfilePanel({
   miniKitInstallState,
   status,
   error,
+  locale,
+  t,
+  onLocaleChange,
   onConnectWallet,
   onVerify,
   onLogout,
@@ -1434,6 +1526,9 @@ function ProfilePanel({
   miniKitInstallState: boolean | undefined;
   status: ProfileStatus;
   error: string | null;
+  locale: Locale;
+  t: TFunction;
+  onLocaleChange: (locale: Locale) => void;
   onConnectWallet: () => void;
   onVerify: () => void;
   onLogout: () => void;
@@ -1452,7 +1547,7 @@ function ProfilePanel({
     user?.world_username ??
     user?.display_name ??
     previewProfile?.username ??
-    "Guest";
+    t("guest");
   const avatarUrl = user?.avatar_url ?? previewProfile?.profilePictureUrl;
   const initials = useMemo(() => getInitials(displayName), [displayName]);
   const completedTasks = stats?.completedTasks ?? 0;
@@ -1501,30 +1596,33 @@ function ProfilePanel({
         setMockAdminError(
           actionError instanceof Error
             ? actionError.message
-            : "Mock admin action failed.",
+            : t("errorMockAdmin"),
         );
       } finally {
         setMockAdminAction(null);
       }
     },
-    [onMockAdminAction],
+    [onMockAdminAction, t],
   );
 
   return (
     <div className="profile-panel" data-authenticated={user ? "true" : "false"}>
       <div className="profile-topbar">
-        <p className="eyebrow">Profile</p>
-        {user ? (
-          <button
-            type="button"
-            className="logout-button"
-            disabled={isBusy}
-            onClick={onLogout}
-            aria-label="Log out"
-          >
-            {status === "logging_out" ? "..." : "Log out"}
-          </button>
-        ) : null}
+        <p className="eyebrow">{t("profile")}</p>
+        <div className="profile-topbar-actions">
+          <LanguageSwitch locale={locale} t={t} onChange={onLocaleChange} />
+          {user ? (
+            <button
+              type="button"
+              className="logout-button"
+              disabled={isBusy}
+              onClick={onLogout}
+              aria-label={t("logOut")}
+            >
+              {status === "logging_out" ? t("loggingOut") : t("logOut")}
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {!user ? (
@@ -1536,8 +1634,8 @@ function ProfilePanel({
             onClick={onConnectWallet}
           >
             {status === "authenticating" || isMiniKitInitializing
-              ? "Connecting..."
-              : "Connect World wallet"}
+              ? t("connecting")
+              : t("connectWorldWallet")}
           </button>
         </div>
       ) : (
@@ -1557,9 +1655,12 @@ function ProfilePanel({
                 {displayName}
               </h1>
               <p className="profile-level-copy">
-                Level {rank.level}
+                {t("levelLine", { level: rank.level })}
                 <span>
-                  {rank.tasksToNextLevel} tasks to Level {rank.nextLevel}
+                  {t("tasksToLevel", {
+                    tasks: rank.tasksToNextLevel,
+                    level: rank.nextLevel,
+                  })}
                 </span>
               </p>
             </div>
@@ -1567,10 +1668,12 @@ function ProfilePanel({
 
           <section
             className="profile-progress"
-            aria-label={`Level progress ${rank.progressPercent}%`}
+            aria-label={t("levelProgress", {
+              progress: rank.progressPercent,
+            })}
           >
             <div className="profile-progress-copy">
-              <span>Progress to next level</span>
+              <span>{t("progressToNextLevel")}</span>
               <strong>{rank.progressPercent}%</strong>
             </div>
             <div className="profile-progress-track">
@@ -1581,28 +1684,28 @@ function ProfilePanel({
             </div>
           </section>
 
-          <section className="profile-metric-grid" aria-label="Profile metrics">
+          <section className="profile-metric-grid" aria-label={t("profileMetrics")}>
             <ProfileMetric
-              label="Tasks"
+              label={t("tasks")}
               value={String(completedTasks)}
-              detail="completed"
+              detail={t("completed")}
             />
             <ProfileMetric
-              label="Reliability"
+              label={t("reliability")}
               value={`${reliabilityPercent}%`}
-              detail="accepted"
+              detail={t("accepted")}
             />
             <ProfileMetric
-              label="Streak"
+              label={t("streak")}
               value={String(streakDays)}
-              detail={streakDays === 1 ? "day" : "days"}
+              detail={streakDays === 1 ? t("day") : t("days")}
             />
           </section>
 
           {isVerified ? (
             <div className="verified-status" role="status">
               <span aria-hidden="true">✓</span>
-              Verified
+              {t("verified")}
             </div>
           ) : (
             <div className="profile-actions">
@@ -1612,13 +1715,13 @@ function ProfilePanel({
                 disabled={isBusy}
                 onClick={onVerify}
               >
-                {status === "verifying" ? "Verifying..." : "Verify identity"}
+                {status === "verifying" ? t("verifying") : t("verifyIdentity")}
               </button>
 
               {hasBuilderAccess ? (
                 <div className="builder-status" role="status">
                   <span aria-hidden="true">✓</span>
-                  World3 hacker
+                  {t("world3Hacker")}
                 </div>
               ) : null}
             </div>
@@ -1632,7 +1735,7 @@ function ProfilePanel({
         <div className="mock-admin-sheet-backdrop" role="presentation">
           <section
             className="mock-admin-sheet"
-            aria-label="Mock admin actions"
+            aria-label={t("mockAdminActions")}
           >
             <button
               type="button"
@@ -1640,9 +1743,9 @@ function ProfilePanel({
               disabled={mockAdminAction !== null}
               onClick={() => setIsMockAdminOpen(false)}
             >
-              Close
+              {t("close")}
             </button>
-            <h2>Mock admin</h2>
+            <h2>{t("mockAdmin")}</h2>
             <div className="mock-admin-actions">
               <button
                 type="button"
@@ -1650,8 +1753,8 @@ function ProfilePanel({
                 onClick={() => void runMockAction("reset_users")}
               >
                 {mockAdminAction === "reset_users"
-                  ? "Resetting..."
-                  : "Reset users"}
+                  ? t("resetting")
+                  : t("resetUsers")}
               </button>
               <button
                 type="button"
@@ -1659,15 +1762,15 @@ function ProfilePanel({
                 onClick={() => void runMockAction("reset_tasks")}
               >
                 {mockAdminAction === "reset_tasks"
-                  ? "Resetting..."
-                  : "Reset user tasks"}
+                  ? t("resetting")
+                  : t("resetUserTasks")}
               </button>
               <button
                 type="button"
                 disabled={mockAdminAction !== null}
                 onClick={() => void runMockAction("pay_tasks")}
               >
-                {mockAdminAction === "pay_tasks" ? "Paying..." : "Pay tasks"}
+                {mockAdminAction === "pay_tasks" ? t("paying") : t("payTasks")}
               </button>
             </div>
             {mockAdminMessage ? (
@@ -1698,6 +1801,33 @@ function ProfileMetric({
       <strong>{value}</strong>
       <small>{detail}</small>
     </article>
+  );
+}
+
+function LanguageSwitch({
+  locale,
+  t,
+  onChange,
+}: {
+  locale: Locale;
+  t: TFunction;
+  onChange: (locale: Locale) => void;
+}) {
+  return (
+    <div className="language-switch" aria-label={t("language")}>
+      {(["en", "ko"] as const).map((option) => (
+        <button
+          key={option}
+          type="button"
+          className="language-switch-option"
+          data-active={locale === option}
+          aria-pressed={locale === option}
+          onClick={() => onChange(option)}
+        >
+          {option === "en" ? t("english") : t("korean")}
+        </button>
+      ))}
+    </div>
   );
 }
 
