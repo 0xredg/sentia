@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getPayoutMode } from "@/lib/payout-mode";
 import { getCurrentUser } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 
@@ -33,10 +34,12 @@ export async function GET() {
     }
 
     const supabase = getSupabaseAdmin();
+    const payoutMode = getPayoutMode();
     const { data: responses, error: responsesError } = await supabase
       .from("task_responses")
       .select("status, created_at")
       .eq("user_id", currentUser.user.id)
+      .eq("payout_mode", payoutMode)
       .order("created_at", { ascending: false })
       .returns<TaskResponseStat[]>();
 
@@ -49,6 +52,7 @@ export async function GET() {
       .select("created_at, paid_at, task_responses(status)")
       .eq("user_id", currentUser.user.id)
       .eq("status", "paid")
+      .eq("payout_mode", payoutMode)
       .order("paid_at", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false })
       .returns<PaidTaskStat[]>();

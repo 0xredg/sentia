@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getPayoutMode } from "@/lib/payout-mode";
 import { getCurrentUser } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 
@@ -77,10 +78,12 @@ export async function GET() {
     }
 
     const supabase = getSupabaseAdmin();
+    const payoutMode = getPayoutMode();
     const { data: completedResponses, error: completedError } = await supabase
       .from("task_responses")
       .select("task_id")
-      .eq("user_id", currentUser.user.id);
+      .eq("user_id", currentUser.user.id)
+      .eq("payout_mode", payoutMode);
 
     if (completedError) {
       throw completedError;
