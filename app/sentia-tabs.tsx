@@ -403,6 +403,11 @@ export function SentiaTabs() {
     }
   }, [serverError, t]);
 
+  const refreshRewardsState = useCallback(() => {
+    refreshEarnings();
+    void loadProfile();
+  }, [loadProfile, refreshEarnings]);
+
   useEffect(() => {
     void loadProfile();
   }, [loadProfile]);
@@ -709,7 +714,7 @@ export function SentiaTabs() {
             t={t}
             serverError={serverError}
             refreshKey={earningsRefreshKey}
-            onClaimed={refreshEarnings}
+            onClaimed={refreshRewardsState}
           />
         )}
       </section>

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCurrentDemoRunId } from "@/lib/demo-runs";
 import { getPayoutMode } from "@/lib/payout-mode";
 import { getCurrentUser } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
@@ -79,11 +80,25 @@ export async function GET() {
 
     const supabase = getSupabaseAdmin();
     const payoutMode = getPayoutMode();
-    const { data: completedResponses, error: completedError } = await supabase
+    const demoRunId = await getCurrentDemoRunId(
+      supabase,
+      currentUser.user.id,
+      payoutMode,
+    );
+    let completedQuery = supabase
       .from("task_responses")
       .select("task_id")
       .eq("user_id", currentUser.user.id)
       .eq("payout_mode", payoutMode);
+
+    if (payoutMode === "real") {
+      completedQuery = demoRunId
+        ? completedQuery.eq("demo_run_id", demoRunId)
+        : completedQuery.is("demo_run_id", null);
+    }
+
+    const { data: completedResponses, error: completedError } =
+      await completedQuery;
 
     if (completedError) {
       throw completedError;

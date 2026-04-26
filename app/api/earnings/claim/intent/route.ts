@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCurrentDemoRunId } from "@/lib/demo-runs";
 import {
   buildClaimMessage,
   buildEarningIdsHash,
@@ -91,6 +92,7 @@ export async function GET() {
     );
   }
 
+  const demoRunId = await getCurrentDemoRunId(supabase, user.id, "real");
   const { data: earnings, error: earningsError } = await supabase
     .from("earnings_ledger")
     .select("id, amount, token")
@@ -98,6 +100,7 @@ export async function GET() {
     .eq("status", "pending")
     .eq("payout_mode", "real")
     .eq("token", "WLD")
+    .eq("demo_run_id", demoRunId)
     .returns<EarningRow[]>();
 
   if (earningsError) {

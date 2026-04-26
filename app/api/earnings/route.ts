@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCurrentDemoRunId } from "@/lib/demo-runs";
 import {
   getPayoutMode,
   getWorldscanTxUrl,
@@ -106,13 +107,26 @@ export async function GET() {
 
   const supabase = getSupabaseAdmin();
   const payoutMode = getPayoutMode();
-  const { data, error } = await supabase
+  const demoRunId = await getCurrentDemoRunId(
+    supabase,
+    currentUser.user.id,
+    payoutMode,
+  );
+  let query = supabase
     .from("earnings_ledger")
     .select(
       "id, amount, token, status, payout_mode, created_at, paid_at, mock_tx_id, payout_tx_hash, task_responses(tasks(requester_name))",
     )
     .eq("user_id", currentUser.user.id)
-    .eq("payout_mode", payoutMode)
+    .eq("payout_mode", payoutMode);
+
+  if (payoutMode === "real") {
+    query = demoRunId
+      ? query.eq("demo_run_id", demoRunId)
+      : query.is("demo_run_id", null);
+  }
+
+  const { data, error } = await query
     .order("paid_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
 

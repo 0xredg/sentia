@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getCurrentDemoRunId } from "@/lib/demo-runs";
 import { getCurrentUser } from "@/lib/session";
 import { getPayoutMode } from "@/lib/payout-mode";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
@@ -67,6 +68,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
   const supabase = getSupabaseAdmin();
   const payoutMode = getPayoutMode();
+  const demoRunId = await getCurrentDemoRunId(
+    supabase,
+    currentUser.user.id,
+    payoutMode,
+  );
   const { data: task, error: taskError } = await supabase
     .from("tasks")
     .select("id, response_schema, reward_amount, reward_token, status, expires_at")
@@ -102,6 +108,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       task_id: task.id,
       user_id: currentUser.user.id,
       payout_mode: payoutMode,
+      demo_run_id: demoRunId,
       answer_payload: { answer: body.answer },
     })
     .select("id")
@@ -127,6 +134,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     token: task.reward_token,
     amount: task.reward_amount,
     payout_mode: payoutMode,
+    demo_run_id: demoRunId,
     status: "pending",
   });
 

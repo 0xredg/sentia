@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCurrentDemoRunId } from "@/lib/demo-runs";
 import { getPayoutMode } from "@/lib/payout-mode";
 import { getCurrentUser } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
@@ -35,11 +36,24 @@ export async function GET() {
 
     const supabase = getSupabaseAdmin();
     const payoutMode = getPayoutMode();
-    const { data: responses, error: responsesError } = await supabase
+    const demoRunId = await getCurrentDemoRunId(
+      supabase,
+      currentUser.user.id,
+      payoutMode,
+    );
+    let responsesQuery = supabase
       .from("task_responses")
       .select("status, created_at")
       .eq("user_id", currentUser.user.id)
-      .eq("payout_mode", payoutMode)
+      .eq("payout_mode", payoutMode);
+
+    if (payoutMode === "real") {
+      responsesQuery = demoRunId
+        ? responsesQuery.eq("demo_run_id", demoRunId)
+        : responsesQuery.is("demo_run_id", null);
+    }
+
+    const { data: responses, error: responsesError } = await responsesQuery
       .order("created_at", { ascending: false })
       .returns<TaskResponseStat[]>();
 
@@ -47,12 +61,20 @@ export async function GET() {
       throw responsesError;
     }
 
-    const { data: paidTasks, error: paidTasksError } = await supabase
+    let paidTasksQuery = supabase
       .from("earnings_ledger")
       .select("created_at, paid_at, task_responses(status)")
       .eq("user_id", currentUser.user.id)
       .eq("status", "paid")
-      .eq("payout_mode", payoutMode)
+      .eq("payout_mode", payoutMode);
+
+    if (payoutMode === "real") {
+      paidTasksQuery = demoRunId
+        ? paidTasksQuery.eq("demo_run_id", demoRunId)
+        : paidTasksQuery.is("demo_run_id", null);
+    }
+
+    const { data: paidTasks, error: paidTasksError } = await paidTasksQuery
       .order("paid_at", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false })
       .returns<PaidTaskStat[]>();

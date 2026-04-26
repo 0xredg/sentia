@@ -10,6 +10,8 @@ node_modules/
 .next/
 out/
 dist/
+artifacts/
+cache/
 
 # Supabase local metadata
 supabase/.temp/
