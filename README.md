@@ -18,6 +18,7 @@ Open it from the World mobile app for the intended experience.
 <p>
   <img src="public/demo/app-preview-profile.png" alt="Sentia profile screen" width="280" />
   <img src="public/demo/app-preview-earn-task.png" alt="Sentia task screen" width="280" />
+  <img src="public/demo/app-preview-earnings.png" alt="Sentia earnings screen" width="280" />
 </p>
 
 ## Hackathon context
