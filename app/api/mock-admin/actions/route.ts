@@ -106,9 +106,27 @@ export async function POST(request: NextRequest) {
   }
 
   if (body.action === "reset_tasks") {
+    const { data: mockEarnings, error: mockEarningsError } = await supabase
+      .from("earnings_ledger")
+      .select("task_response_id")
+      .eq("payout_mode", "mock")
+      .not("task_response_id", "is", null);
+
+    if (mockEarningsError) {
+      return NextResponse.json(
+        { error: "Could not load mock earnings." },
+        { status: 500 },
+      );
+    }
+
+    const taskResponseIds = (mockEarnings ?? [])
+      .map((earning) => earning.task_response_id)
+      .filter((id): id is string => typeof id === "string");
+
     const { count: earnings, error: earningsError } = await supabase
       .from("earnings_ledger")
       .delete({ count: "exact" })
+      .eq("payout_mode", "mock")
       .neq("id", allRowsFilterId);
 
     if (earningsError) {
@@ -118,10 +136,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { count: taskResponses, error: taskResponsesError } = await supabase
-      .from("task_responses")
-      .delete({ count: "exact" })
-      .neq("id", allRowsFilterId);
+    const taskResponsesResult = taskResponseIds.length
+      ? await supabase
+          .from("task_responses")
+          .delete({ count: "exact" })
+          .in("id", taskResponseIds)
+      : { count: 0, error: null };
+
+    const { count: taskResponses, error: taskResponsesError } =
+      taskResponsesResult;
 
     if (taskResponsesError) {
       return NextResponse.json(
@@ -149,6 +172,7 @@ export async function POST(request: NextRequest) {
       { count: "exact" },
     )
     .eq("status", "processing")
+    .eq("payout_mode", "mock")
     .is("paid_at", null);
 
   if (earningsError) {

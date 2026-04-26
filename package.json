@@ -2,11 +2,14 @@
   "name": "sentia",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "dev:mock": "NEXT_PUBLIC_SENTIA_MOCK_ADMIN=true next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "compile:vault": "hardhat compile",
+    "deploy:vault": "hardhat run scripts/deploy-sentia-reward-vault.ts --network worldchain"
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.8",
@@ -25,6 +28,7 @@
     "@types/node": "25.6.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
+    "hardhat": "^3.4.1",
     "typescript": "6.0.3"
   },
   "packageManager": "pnpm@10.9.0"

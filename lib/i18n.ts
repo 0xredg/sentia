@@ -94,6 +94,9 @@ const translations = {
     errorLoadEarnings: "Could not load earnings.",
     errorVerifyBeforeClaim: "Connect and verify your profile before claiming.",
     errorClaimEarnings: "Could not claim earnings.",
+    errorClaimWalletMismatch:
+      "The signing World Wallet does not match your connected World Wallet.",
+    claimSignatureCancelled: "Signature cancelled.",
     errorAuthenticationRequired: "Authentication required.",
     errorUnsupportedAction: "Unsupported action.",
     errorInvalidAnswer: "Invalid answer.",
@@ -181,6 +184,8 @@ const translations = {
     errorLoadEarnings: "수익을 불러오지 못했습니다.",
     errorVerifyBeforeClaim: "클레임하려면 프로필을 연결하고 인증하세요.",
     errorClaimEarnings: "수익을 클레임하지 못했습니다.",
+    errorClaimWalletMismatch: "서명한 World Wallet이 연결된 World Wallet과 일치하지 않습니다.",
+    claimSignatureCancelled: "서명이 취소되었습니다.",
     errorAuthenticationRequired: "인증이 필요합니다.",
     errorUnsupportedAction: "지원하지 않는 작업입니다.",
     errorInvalidAnswer: "올바르지 않은 답변입니다.",

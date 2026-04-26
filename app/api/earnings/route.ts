@@ -1,4 +1,10 @@
 import { NextResponse } from "next/server";
+import { getCurrentDemoRunId } from "@/lib/demo-runs";
+import {
+  getPayoutMode,
+  getWorldscanTxUrl,
+  type PayoutMode,
+} from "@/lib/payout-mode";
 import { getCurrentUser } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 
@@ -9,8 +15,11 @@ type LedgerRow = {
   amount: string | number;
   token: string;
   status: LedgerStatus;
+  payout_mode: PayoutMode;
   created_at: string;
   paid_at: string | null;
+  mock_tx_id: string | null;
+  payout_tx_hash: string | null;
   task_responses:
     | {
         tasks:
@@ -97,12 +106,27 @@ export async function GET() {
   }
 
   const supabase = getSupabaseAdmin();
-  const { data, error } = await supabase
+  const payoutMode = getPayoutMode();
+  const demoRunId = await getCurrentDemoRunId(
+    supabase,
+    currentUser.user.id,
+    payoutMode,
+  );
+  let query = supabase
     .from("earnings_ledger")
     .select(
-      "id, amount, token, status, created_at, paid_at, task_responses(tasks(requester_name))",
+      "id, amount, token, status, payout_mode, created_at, paid_at, mock_tx_id, payout_tx_hash, task_responses(tasks(requester_name))",
     )
     .eq("user_id", currentUser.user.id)
+    .eq("payout_mode", payoutMode);
+
+  if (payoutMode === "real") {
+    query = demoRunId
+      ? query.eq("demo_run_id", demoRunId)
+      : query.is("demo_run_id", null);
+  }
+
+  const { data, error } = await query
     .order("paid_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
 
@@ -124,10 +148,17 @@ export async function GET() {
       amount: String(row.amount),
       token: row.token,
       paidAt: row.paid_at ?? row.created_at,
+      payoutMode: row.payout_mode,
+      mockTxId: row.mock_tx_id,
+      txHash: row.payout_tx_hash,
+      worldscanUrl: row.payout_tx_hash
+        ? getWorldscanTxUrl(row.payout_tx_hash)
+        : null,
       requesterName: getRequesterName(row),
     }));
 
   return NextResponse.json({
+    payoutMode,
     summary: {
       available,
       processing,

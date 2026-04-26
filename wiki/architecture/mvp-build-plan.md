@@ -59,7 +59,7 @@ Acceptance:
 
 ## Phase 5: Feed Task Completion
 
-- Implement `GET /api/tasks/next`.
+- Implement `GET /api/tasks/feed`.
 - Implement `POST /api/tasks/:taskId/responses`.
 - Validate verified user, task status, expiry, duplicate response, and response schema.
 - Create pending earning when response is accepted.
@@ -72,18 +72,20 @@ Acceptance:
 - Unverified user cannot earn.
 - Earnings tab shows pending WLD after completion.
 
-## Phase 6: Treasury Payouts
+## Phase 6: World Chain Reward Vault Payouts
 
-- Add treasury wallet configuration.
-- Implement protected payout worker endpoint.
+- Add vault runtime configuration.
+- Deploy and fund `SentiaRewardVault`.
+- Implement claim intent and MiniKit signature flow.
 - Select pending earnings and mark them `processing`.
-- Send WLD to user wallet.
+- Call `payoutBatch` from the backend payout wallet.
 - Store payout attempt with transaction hash/status.
 - Confirm transaction and mark earning `paid`.
+- Add reconciliation for submitted transactions if DB finalization is interrupted.
 
 Acceptance:
 
-- A completed task can trigger a real WLD payout.
+- A completed task can trigger a real WLD payout from the vault.
 - Failed payout remains visible and retryable.
 - Earnings tab shows pending, paid, and failed states correctly.
 

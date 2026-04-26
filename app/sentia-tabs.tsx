@@ -139,17 +139,58 @@ type EarningsSummary = {
   totalPaid: string;
 };
 
+type PayoutMode = "mock" | "real";
+
 type PaidOperation = {
   id: string;
   amount: string;
   token: string;
   paidAt: string;
+  payoutMode?: PayoutMode;
+  mockTxId?: string | null;
+  txHash?: string | null;
+  worldscanUrl?: string | null;
   requesterName: string | null;
 };
 
 type EarningsData = {
+  payoutMode: PayoutMode;
   summary: EarningsSummary;
   paidOperations: PaidOperation[];
+};
+
+type ClaimIntentResponse =
+  | {
+      claimRequired: false;
+      payoutMode: "real";
+      claim: null;
+      message: null;
+    }
+  | {
+      claimRequired: true;
+      intentId: string;
+      message: string;
+      claim: {
+        earningIds: string[];
+        earningIdsHash: string;
+        amountWei: string;
+        amountFormatted: string;
+        nonce: string | number;
+        deadline: number;
+        vaultAddress: string;
+        chainId: number;
+        tokenAddress: string;
+      };
+    };
+
+type SignMessageSuccess = {
+  status: "success";
+  signature: string;
+  address: string;
+};
+
+type ErrorResponse = {
+  error?: unknown;
 };
 
 type ProfileUser = {
@@ -198,6 +239,33 @@ type ServerErrorFunction = (
   message: unknown,
   fallbackKey: Parameters<typeof translate>[1],
 ) => string;
+
+function isSignMessageSuccess(value: unknown): value is SignMessageSuccess {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "status" in value &&
+    value.status === "success" &&
+    "signature" in value &&
+    typeof value.signature === "string" &&
+    "address" in value &&
+    typeof value.address === "string"
+  );
+}
+
+function getErrorCode(value: unknown) {
+  return typeof value === "object" && value !== null && "error" in value
+    ? value.error
+    : undefined;
+}
+
+function isClaimWalletError(error: unknown) {
+  return (
+    error === "invalid_claim_signature" ||
+    error === "claim_signer_wallet_mismatch" ||
+    error === "claim_wallet_changed"
+  );
+}
 
 async function resolveWorldProfile(walletAddress: string) {
   const immediateProfile = {
@@ -334,6 +402,11 @@ export function SentiaTabs() {
       setStatus("idle");
     }
   }, [serverError, t]);
+
+  const refreshRewardsState = useCallback(() => {
+    refreshEarnings();
+    void loadProfile();
+  }, [loadProfile, refreshEarnings]);
 
   useEffect(() => {
     void loadProfile();
@@ -641,7 +714,7 @@ export function SentiaTabs() {
             t={t}
             serverError={serverError}
             refreshKey={earningsRefreshKey}
-            onClaimed={refreshEarnings}
+            onClaimed={refreshRewardsState}
           />
         )}
       </section>
@@ -1372,6 +1445,71 @@ function EarningsPanel({
     setEarningsError(null);
 
     try {
+      if (earnings?.payoutMode === "real") {
+        const intentResponse = await fetch("/api/earnings/claim/intent");
+        const intentData = (await intentResponse.json()) as
+          | ClaimIntentResponse
+          | ErrorResponse;
+        const intentError = getErrorCode(intentData);
+
+        if (!intentResponse.ok) {
+          if (
+            intentResponse.status === 401 ||
+            intentError === "verification_required"
+          ) {
+            throw new Error(t("errorVerifyBeforeClaim"));
+          }
+
+          throw new Error(serverError(intentError, "errorClaimEarnings"));
+        }
+
+        if (!("claimRequired" in intentData) || !intentData.claimRequired) {
+          onClaimed();
+          await loadEarnings();
+          return;
+        }
+
+        const signatureResult = await MiniKit.signMessage({
+          message: intentData.message,
+        });
+
+        if (!isSignMessageSuccess(signatureResult.data)) {
+          setEarningsError(t("claimSignatureCancelled"));
+          return;
+        }
+
+        const response = await fetch("/api/earnings/claim", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            intentId: intentData.intentId,
+            message: intentData.message,
+            signature: signatureResult.data.signature,
+            address: signatureResult.data.address,
+          }),
+        });
+        const data = await response.json();
+        const claimError = getErrorCode(data);
+
+        if (!response.ok) {
+          if (claimError === "verification_required") {
+            throw new Error(t("errorVerifyBeforeClaim"));
+          }
+
+          if (isClaimWalletError(claimError)) {
+            throw new Error(t("errorClaimWalletMismatch"));
+          }
+
+          throw new Error(serverError(claimError, "errorClaimEarnings"));
+        }
+
+        onClaimed();
+        await loadEarnings();
+        return;
+      }
+
       const response = await fetch("/api/earnings/claim", { method: "POST" });
       const data = await response.json();
 
@@ -1392,7 +1530,7 @@ function EarningsPanel({
     } finally {
       setIsClaiming(false);
     }
-  }, [loadEarnings, onClaimed, serverError, t]);
+  }, [earnings?.payoutMode, loadEarnings, onClaimed, serverError, t]);
 
   const summary = earnings?.summary ?? {
     available: "0",

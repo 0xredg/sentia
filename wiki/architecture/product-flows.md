@@ -68,16 +68,18 @@ Failure states:
 
 ## Earnings And Payouts
 
-1. Earnings tab reads from `earnings_ledger` and `payout_attempts`.
+1. Earnings tab reads from `earnings_ledger` and `payout_attempts` for the current payout mode.
 2. User sees:
    - available or pending earnings
+   - processing payouts
    - paid earnings
-   - failed or retrying payouts
    - total earned
-3. Backend payout worker selects payable pending earnings.
-4. Backend sends WLD from the Sentia treasury wallet to the user's wallet.
-5. Backend records transaction hash and status in `payout_attempts`.
-6. Backend marks ledger entries as paid only after transaction confirmation.
+3. In mock mode, Claim atomically marks mock earnings as paid and records `mock_tx_id`.
+4. In real mode, Claim asks the backend for an EIP-191 claim intent.
+5. World App opens a `MiniKit.signMessage` prompt.
+6. Backend verifies the signature, moves earnings to `processing`, and calls `SentiaRewardVault.payoutBatch`.
+7. Backend records the transaction hash and confirms `payout_attempts`.
+8. Backend marks ledger entries as paid only after the World Chain transaction confirms.
 
 Payout states:
 
@@ -86,6 +88,26 @@ Payout states:
 - `paid`: payout confirmed
 - `failed`: payout failed and can be retried
 - `blocked`: payout cannot proceed because wallet, region, balance, or compliance checks fail
+
+If the chain transaction succeeds but the database finalization is interrupted, `/api/earnings/reconcile` can verify `vault.paid(earningIdHash)` and complete the DB state.
+
+## Mock vs Real Mode
+
+`pnpm run dev:mock` uses mock WLD. It is safe for repeated local testing and mock admin resets.
+
+`pnpm run dev` uses real-mode rows. Real claims require:
+
+- a signed claim intent;
+- a funded World Chain vault;
+- a server-side payout key that owns the vault.
+
+Mock admin actions never mutate real paid earnings.
+
+## Repeatable Real Demo Runs
+
+Real paid rows are not deleted or reset. To replay the same seeded task cards in a production demo, start a new real demo run.
+
+The new run updates `users.current_demo_run_id`. Feed then treats the seeded tasks as available again for that user, while old responses, earnings, and on-chain payouts remain preserved.
 
 ## Demo Path
 
@@ -96,5 +118,6 @@ Recommended demo sequence:
 1. Open Profile and show verified human state.
 2. Open Feed and answer one task.
 3. Show immediate earned state after backend accepts the response.
-4. Open Earnings and show pending/paid WLD payout.
-5. If a real transaction is available, show the transaction hash/status.
+4. Open Earnings and show claimable WLD.
+5. Claim, sign in World App, and show WLD paid from the World Chain vault.
+6. Show the Worldscan transaction hash/status.

@@ -2,42 +2,40 @@
 
 ## Goal
 
-Implement Sentia payout variant 2 for the hackathon demo:
+Sentia's hackathon payout path pays real WLD from a pre-funded World Chain smart contract after a worker signs a claim authorization inside World App.
 
-> A verified worker claims earned WLD with an EIP-191 personal-message signature. Sentia's backend verifies the signed claim, then releases WLD from a minimal World Chain reward vault to the worker's World Wallet.
+The current implementation is intentionally focused:
 
-This keeps the demo concrete and on-chain while avoiding a full marketplace escrow system.
+- verified or builder-approved workers complete off-chain tasks;
+- Sentia records earnings in Supabase;
+- workers sign an EIP-191 claim intent with `MiniKit.signMessage`;
+- Sentia's backend verifies the signature and releases WLD from `SentiaRewardVault`;
+- the vault provides public on-chain funds, payout events, and duplicate payout protection.
 
-## Non-Goals
+This is not yet a full requester escrow marketplace. It is a credible, demo-ready payout rail for real WLD rewards.
 
-This design intentionally does **not** implement:
+## Current Hackathon Scope
 
-- campaign-level escrow
-- company/requester deposits
-- refunds
-- dispute resolution
-- on-chain task validation
-- on-chain signature verification
-- user-paid claim transactions
-- `fund()` on the vault contract
+Implemented:
 
-The vault is funded operationally by manually transferring WLD to the contract address.
+- World Chain mainnet payout vault.
+- Real WLD batch payouts via `payoutBatch`.
+- EIP-191 claim authorization.
+- EOA recovery plus EIP-1271 fallback for World Wallet signatures.
+- Mock vs real payout separation in the database.
+- Reconciliation endpoint for post-transaction DB recovery.
+- Real demo runs for repeatable production demos.
 
-## Why This Variant
+Not implemented in the hackathon contract:
 
-Variant 1, direct backend treasury transfer, is enough to pay users. Variant 2 adds a minimal smart contract vault because it improves the hackathon story without changing the core product logic too much.
+- requester-funded campaign escrow;
+- requester refunds;
+- dispute resolution;
+- on-chain task validation;
+- on-chain signature verification;
+- user-paid claim transactions.
 
-Concrete benefits:
-
-- WLD rewards are visibly held in a World Chain contract before payout.
-- Each payout emits a public on-chain event.
-- The contract prevents duplicate payouts for the same earning ID hash.
-- The user explicitly authorizes the claim by signing an EIP-191 message in World App.
-- The backend remains responsible for business logic, verification, and fraud checks.
-
-Important limitation:
-
-> The smart contract does not know whether a task response is valid. The backend remains trusted for task validation and payout authorization.
+Those are product evolution steps, not blockers for the current demo loop.
 
 ## Target Network
 
@@ -46,147 +44,83 @@ Important limitation:
 - WLD token: `0x2cfc85d8e48f8eab294be644d9e25c3030863003`
 - Explorer transaction URL: `https://worldscan.org/tx/{txHash}`
 
-## High-Level Flow
+## Smart Contract
+
+`SentiaRewardVault` holds WLD and pays workers when called by its owner, which is the backend payout wallet.
+
+Core contract behavior:
+
+- `IERC20 public immutable wld`
+- `address public owner`
+- `mapping(bytes32 => bool) public paid`
+- `payout(bytes32 earningIdHash, address worker, uint256 amount)`
+- `payoutBatch(bytes32[] earningIdHashes, address[] workers, uint256[] amounts)`
+- `withdrawWld(address to, uint256 amount)`
+- `balance()`
+- `Payout` and `Withdraw` events
+
+The batch payout is atomic: if any earning hash is already paid, any amount is zero, any worker is zero, or WLD transfer fails, the whole transaction reverts.
+
+The `paid[earningIdHash]` mapping prevents paying the same earning hash twice on-chain. The hash is currently:
+
+```ts
+keccak256(toBytes(earningId))
+```
+
+There is intentionally no `fund()` function. Funding is done by transferring WLD directly to the vault address. This keeps the contract simple and compatible with normal ERC-20 transfer UX.
+
+## Real Claim Flow
 
 ```mermaid
 sequenceDiagram
   participant User
   participant Client as Sentia Mini App
-  participant WorldApp as World App / MiniKit
+  participant MiniKit as World App MiniKit
   participant API as Next.js API
   participant DB as Supabase
   participant Vault as SentiaRewardVault
   participant WLD as WLD Token
 
-  User->>Client: Tap "Claim to World Wallet"
+  User->>Client: Complete task
+  Client->>API: POST /api/tasks/{taskId}/responses
+  API->>DB: Insert task_response + pending earning
+  User->>Client: Tap Claim
   Client->>API: GET /api/earnings/claim/intent
-  API->>DB: Load pending earnings + user claim nonce
-  API-->>Client: Claim intent message, nonce, amount, earning IDs
-  Client->>WorldApp: MiniKit.signMessage(message)
-  WorldApp-->>Client: signature + signing address
-  Client->>API: POST /api/earnings/claim { intentId, signature }
-  API->>DB: Re-load pending earnings and nonce
-  API->>API: Rebuild exact message and verify EIP-191 signature
-  API->>DB: Mark selected earnings processing
-  API->>Vault: payout(earningIdHash, worker, amount)
+  API->>DB: Load pending real earnings + claim_nonce
+  API->>DB: Insert claim_intent pending
+  API-->>Client: Deterministic EIP-191 message
+  Client->>MiniKit: signMessage(message)
+  MiniKit-->>Client: signature + address
+  Client->>API: POST /api/earnings/claim
+  API->>DB: Reload intent, user, pending earnings
+  API->>API: Rebuild message and verify EIP-191/EIP-1271
+  API->>Vault: Read wld()
+  API->>WLD: balanceOf(vault)
+  API->>DB: Mark earnings processing + insert payout_attempts
+  API->>Vault: payoutBatch(...)
   Vault->>WLD: transfer(worker, amount)
-  Vault-->>API: tx receipt + Payout event
-  API->>DB: Mark earning paid + store tx hash
-  API-->>Client: Paid claim result + Worldscan URL
+  Vault-->>API: Receipt success
+  API->>DB: Mark earnings paid + attempts confirmed
+  API->>DB: Consume intent + increment nonce
+  API-->>Client: tx hash + Worldscan URL
 ```
 
-## Components
+### Claim Intent
 
-### 1. Smart Contract: `SentiaRewardVault`
+`GET /api/earnings/claim/intent` only works in real mode.
 
-The contract only holds WLD and pays workers when called by the owner.
+It:
 
-Required properties:
+1. Authenticates the current user.
+2. Allows claim access for `verification_status = verified` or `builder_access_status = granted`.
+3. Loads the user's pending real WLD earnings in the current demo run.
+4. Sorts earning IDs and computes `earningIdsHash`.
+5. Sums WLD amounts with string/BigInt math.
+6. Reads `users.claim_nonce`.
+7. Builds a deterministic EIP-191 message.
+8. Stores a short-lived `claim_intents` row.
 
-- immutable WLD token address
-- owner address controlled by the backend payout wallet
-- `mapping(bytes32 => bool) paid`
-- `payout(bytes32 earningIdHash, address worker, uint256 amount)`
-- `Payout` event
-- no `fund()` function
-
-Minimal Solidity shape:
-
-```solidity
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
-
-interface IERC20 {
-    function transfer(address to, uint256 amount) external returns (bool);
-    function balanceOf(address account) external view returns (uint256);
-}
-
-contract SentiaRewardVault {
-    IERC20 public immutable wld;
-    address public owner;
-
-    mapping(bytes32 => bool) public paid;
-
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-    event Payout(bytes32 indexed earningIdHash, address indexed worker, uint256 amount);
-
-    error NotOwner();
-    error AlreadyPaid();
-    error InvalidWorker();
-    error InvalidAmount();
-    error TransferFailed();
-
-    modifier onlyOwner() {
-        if (msg.sender != owner) revert NotOwner();
-        _;
-    }
-
-    constructor(address wldToken, address initialOwner) {
-        if (wldToken == address(0)) revert InvalidWorker();
-        if (initialOwner == address(0)) revert InvalidWorker();
-        wld = IERC20(wldToken);
-        owner = initialOwner;
-        emit OwnershipTransferred(address(0), initialOwner);
-    }
-
-    function transferOwnership(address newOwner) external onlyOwner {
-        if (newOwner == address(0)) revert InvalidWorker();
-        emit OwnershipTransferred(owner, newOwner);
-        owner = newOwner;
-    }
-
-    function payout(bytes32 earningIdHash, address worker, uint256 amount) external onlyOwner {
-        if (paid[earningIdHash]) revert AlreadyPaid();
-        if (worker == address(0)) revert InvalidWorker();
-        if (amount == 0) revert InvalidAmount();
-
-        paid[earningIdHash] = true;
-
-        bool ok = wld.transfer(worker, amount);
-        if (!ok) revert TransferFailed();
-
-        emit Payout(earningIdHash, worker, amount);
-    }
-
-    function balance() external view returns (uint256) {
-        return wld.balanceOf(address(this));
-    }
-}
-```
-
-Notes:
-
-- There is intentionally no `fund()` function.
-- Funding is done by transferring WLD directly to the vault address.
-- The `paid` mapping is set before transfer. If the transfer reverts, the whole transaction reverts and `paid` is not persisted.
-- The contract has no concept of tasks, campaigns, users, or World ID. Those stay in the backend.
-
-### 2. EIP-191 Claim Authorization
-
-World Mini Apps support `MiniKit.signMessage()` for EIP-191 personal-message signatures.
-
-The signature is used as an off-chain authorization. The backend verifies it before paying from the vault.
-
-The smart contract does not verify this signature.
-
-#### Message Requirements
-
-The message must be deterministic and rebuilt exactly on the backend.
-
-It must include:
-
-- app name
-- action
-- user wallet
-- vault address
-- chain ID
-- WLD token address
-- sorted earning IDs hash
-- total amount in WLD wei
-- nonce
-- deadline
-
-Recommended message format:
+The user signs a message shaped like:
 
 ```txt
 Sentia Claim Authorization
@@ -205,314 +139,155 @@ Deadline: {unixDeadlineSeconds}
 Only sign this message inside Sentia if you intend to claim these rewards to your World Wallet.
 ```
 
-Address casing must be normalized before rendering and verification. Use lowercase hex strings for message fields, while still using checksum/address validation for blockchain calls.
+The client never decides the final amount, earning IDs, nonce, token, or vault.
 
-#### Earnings Hash
+### Claim Execution
 
-For a batch claim, the user signs a hash of the sorted earning IDs instead of every ID rendered inline.
-
-Recommended helper:
-
-```ts
-import { keccak256, toBytes } from "viem";
-
-export function buildEarningIdsHash(earningIds: string[]) {
-  const sorted = [...earningIds].sort();
-  return keccak256(toBytes(JSON.stringify(sorted)));
-}
-```
-
-The backend must recompute this from the earnings it is actually going to pay. Never trust the client-submitted amount or earning IDs without reloading from the database.
-
-#### Nonce
-
-Add a per-user claim nonce.
-
-```sql
-alter table users
-  add column if not exists claim_nonce bigint not null default 0;
-```
-
-Rules:
-
-- The claim intent uses the current `users.claim_nonce`.
-- The backend accepts a signature only if the nonce still matches.
-- After a successful claim transaction, increment `claim_nonce`.
-- If a claim fails before any on-chain payout, the nonce may remain unchanged so the user can retry.
-- If partial payouts are possible, increment the nonce after finalizing the claim attempt and return per-earning results.
-
-For the hackathon implementation, prefer all-or-clear batch handling where possible.
-
-#### Deadline
-
-Use a short expiry, for example 10 minutes:
-
-```ts
-const deadline = Math.floor(Date.now() / 1000) + 10 * 60;
-```
-
-The backend rejects expired signatures.
-
-### 3. API Design
-
-#### `GET /api/earnings/claim/intent`
-
-Creates the exact message that the user will sign.
-
-Responsibilities:
-
-1. Authenticate the current user from the existing server session.
-2. Confirm the user has a valid `wallet_address`.
-3. Confirm the user is World ID verified / eligible to claim.
-4. Load all claimable `pending` earnings for the user.
-5. Sort earning IDs.
-6. Calculate `earningIdsHash`.
-7. Calculate `totalAmountWei` from database values.
-8. Read `users.claim_nonce`.
-9. Build deterministic EIP-191 message.
-10. Return the message and display metadata to the client.
-
-Response shape:
+`POST /api/earnings/claim` in real mode accepts:
 
 ```json
 {
-  "message": "Sentia Claim Authorization\n\nAction: Claim WLD rewards\n...",
-  "claim": {
-    "earningIds": ["..."],
-    "earningIdsHash": "0x...",
-    "amountWei": "25000000000000000",
-    "amountFormatted": "0.025",
-    "nonce": 12,
-    "deadline": 1777200000,
-    "vaultAddress": "0x...",
-    "chainId": 480,
-    "tokenAddress": "0x2cfc85d8e48f8eab294be644d9e25c3030863003"
-  }
-}
-```
-
-No database state should be changed by this endpoint.
-
-#### `POST /api/earnings/claim`
-
-Consumes the signature and executes payouts.
-
-Request shape:
-
-```json
-{
+  "intentId": "...",
+  "message": "...",
   "signature": "0x...",
-  "message": "Sentia Claim Authorization\n\nAction: Claim WLD rewards\n..."
+  "address": "0x..."
 }
 ```
 
-The backend should not trust the submitted message. It should rebuild the expected message from database state and compare it byte-for-byte.
+The backend:
 
-Processing steps:
+- reloads the stored intent and current user;
+- rejects expired or consumed intents;
+- checks the wallet and claim nonce still match;
+- reloads pending real WLD earnings from the database;
+- rebuilds the exact message and compares byte-for-byte;
+- verifies EIP-191 through EOA recovery or EIP-1271 `isValidSignature`;
+- preflights the vault:
+  - `SENTIA_CHAIN_ID = 480`;
+  - `SENTIA_VAULT_ADDRESS` is non-zero;
+  - `SENTIA_PAYOUT_PRIVATE_KEY` is present;
+  - `vault.wld()` equals `SENTIA_WLD_TOKEN_ADDRESS`;
+  - `WLD.balanceOf(vault)` covers the batch amount;
+- marks selected earnings `processing`;
+- inserts `payout_attempts` with `status = submitted`;
+- calls `payoutBatch`;
+- on receipt success, marks earnings `paid`, attempts `confirmed`, consumes the intent, and increments `claim_nonce`.
 
-1. Authenticate current user.
-2. Re-load user wallet, verification status, and `claim_nonce`.
-3. Re-load current claimable `pending` earnings.
-4. Recompute earning IDs, hash, total amount, deadline rules, and expected message.
-5. Check submitted message equals expected message.
-6. Verify EIP-191 signature using `verifyMessage` from `viem`.
-7. Confirm recovered/signed address equals `users.wallet_address`.
-8. Move selected earnings from `pending` to `processing`.
-9. For each earning, call `SentiaRewardVault.payout(earningIdHash, worker, amountWei)`.
-10. Wait for transaction receipt.
-11. Mark earning `paid` with transaction metadata.
-12. Increment `users.claim_nonce` after successful finalization.
-13. Return per-earning payout results.
+If a failure happens before any transaction is submitted, earnings return to `pending` so the user can retry.
 
-For the first implementation, paying each earning separately is simpler and gives one anti-double-pay guard per ledger row. A later optimization can batch payouts in the vault.
+If a transaction is submitted but DB finalization fails, earnings keep `processing` plus `payout_tx_hash`. Reconciliation can repair the database from the on-chain vault state.
 
-### 4. Backend Payout Service
+## Reconciliation
 
-Create a server-only service, for example:
+`POST /api/earnings/reconcile` is a minimal recovery route for real mode.
 
-```txt
-lib/payouts/world-chain-vault.ts
+It can reconcile:
+
+- a specific `{ txHash }`; or
+- the current user's processing payouts in the current real demo run.
+
+The helper reads relevant real earnings and checks the contract directly:
+
+```ts
+vault.paid(buildVaultEarningIdHash(earning.id))
 ```
 
-Responsibilities:
+Only if every earning in the target batch is paid on-chain does it finalize the database:
 
-- create `publicClient` for World Chain
-- create `walletClient` from `SENTIA_PAYOUT_PRIVATE_KEY`
-- encode `payout(...)` calls using the vault ABI
-- wait for receipts
-- return tx hashes and errors
+- `earnings_ledger.status = paid`
+- `payout_attempts.status = confirmed`
+- pending claim intent consumed when found
+- nonce incremented when still matching
 
-Required environment variables:
+This makes the on-chain `paid` mapping the recovery source of truth for payout finalization.
+
+## Mock vs Real Separation
+
+The app can run with mock WLD or real WLD against the same Supabase project.
+
+- `NEXT_PUBLIC_SENTIA_MOCK_ADMIN=true` creates and claims mock earnings.
+- Normal `pnpm run dev` creates real earnings and uses the World Chain vault.
+- `task_responses.payout_mode` and `earnings_ledger.payout_mode` separate the two modes.
+- Mock admin reset/pay actions only touch mock rows.
+- Real payouts never process mock earnings.
+
+Historical test data is treated as mock so old demo rows cannot accidentally become real payable rewards.
+
+## Real Demo Runs
+
+Real paid earnings should not be deleted or reset. They are already part of the worker ledger and may also be paid on-chain.
+
+For repeatable production demos, Sentia uses `demo_runs`:
+
+- `users.current_demo_run_id` selects the active real run;
+- `task_responses.demo_run_id` records completions per run;
+- `earnings_ledger.demo_run_id` scopes real rewards per run;
+- Feed excludes tasks completed only in the current run;
+- Earnings/Profile default to the current run.
+
+Starting a new real demo run makes the same seeded tasks available again while preserving previous real payouts.
+
+## Environment Variables
+
+Runtime server variables:
 
 ```env
-WORLD_CHAIN_RPC_URL=
-SENTIA_VAULT_ADDRESS=
-SENTIA_PAYOUT_PRIVATE_KEY=
+WORLD_CHAIN_RPC_URL=https://worldchain-mainnet.g.alchemy.com/public
+SENTIA_VAULT_ADDRESS=0x...
+SENTIA_PAYOUT_PRIVATE_KEY=0x...
 SENTIA_WLD_TOKEN_ADDRESS=0x2cfc85d8e48f8eab294be644d9e25c3030863003
 SENTIA_CHAIN_ID=480
 ```
 
-Operational constraint:
+Deploy-time variables:
 
-- `SENTIA_PAYOUT_PRIVATE_KEY` must correspond to the vault `owner`, or payouts will revert with `NotOwner()`.
-
-### 5. Database Changes
-
-Add payout metadata to `earnings_ledger`:
-
-```sql
-alter table earnings_ledger
-  add column if not exists chain_id integer default 480,
-  add column if not exists recipient_wallet text,
-  add column if not exists payout_contract_address text,
-  add column if not exists payout_tx_hash text,
-  add column if not exists payout_error text,
-  add column if not exists paid_at timestamptz;
-
-create unique index if not exists earnings_ledger_payout_tx_hash_idx
-on earnings_ledger(payout_tx_hash)
-where payout_tx_hash is not null;
+```env
+SENTIA_DEPLOYER_PRIVATE_KEY=0x...
+SENTIA_VAULT_OWNER_ADDRESS=0x...
 ```
 
-Add claim nonce to `users`:
+`SENTIA_DEPLOYER_PRIVATE_KEY` is only needed to deploy the contract. Runtime payouts use `SENTIA_PAYOUT_PRIVATE_KEY`, which must correspond to the current vault owner.
 
-```sql
-alter table users
-  add column if not exists claim_nonce bigint not null default 0;
-```
+## Deployment Steps
 
-Recommended ledger state transitions:
+1. Configure `SENTIA_DEPLOYER_PRIVATE_KEY`, `SENTIA_VAULT_OWNER_ADDRESS`, `WORLD_CHAIN_RPC_URL`, `SENTIA_WLD_TOKEN_ADDRESS`, and `SENTIA_CHAIN_ID`.
+2. Run `pnpm compile:vault`.
+3. Deploy with `pnpm deploy:vault`.
+4. Store the deployed contract address as `SENTIA_VAULT_ADDRESS`.
+5. Configure runtime `SENTIA_PAYOUT_PRIVATE_KEY`.
+6. Transfer a small WLD amount to the vault.
+7. Run one real claim end-to-end.
+8. Check the tx on Worldscan and verify the earning becomes `paid`.
+9. If the tx succeeds but the UI remains `processing`, call `/api/earnings/reconcile`.
 
-```txt
-pending -> processing -> paid
-pending -> processing -> failed
-failed -> processing -> paid, only on explicit retry
-```
+Use Node 22 LTS for Hardhat deploys.
 
-Do not mark an earning `paid` until a transaction receipt confirms success.
+## Hackathon Limitations
 
-### 6. Frontend Claim UX
+The current architecture is deliberately compact:
 
-In the Earnings tab:
+- The backend is trusted for task validation and payout authorization.
+- The vault is pre-funded by Sentia, not by individual requesters.
+- Companies in the demo are represented by seeded tasks, not requester accounts with escrowed budgets.
+- The owner payout key is server-side custodial infrastructure.
+- Refunds, disputes, campaign accounting, and requester billing are off-chain or out of scope for the hackathon.
 
-1. User taps `Claim to World Wallet`.
-2. Client calls `GET /api/earnings/claim/intent`.
-3. Client shows a short confirmation state if useful.
-4. Client calls `MiniKit.signMessage({ message })`.
-5. Client posts `{ message, signature }` to `POST /api/earnings/claim`.
-6. UI shows `Sending on World Chain...` while backend executes payout.
-7. UI renders paid results with Worldscan links.
+This is a good fit for the demo: judges can see World ID, human task completion, an explicit World Wallet signature, real WLD moving from a World Chain contract, and public on-chain payout evidence.
 
-MiniKit shape from World docs:
+## Production-Ready Evolution
 
-```ts
-const result = await MiniKit.signMessage({
-  message,
-});
+A production marketplace would move requester funding and campaign accounting on-chain.
 
-if (result.executedWith === "minikit" && result.data.status === "success") {
-  const signature = result.data.signature;
-  const address = result.data.address;
-}
-```
+One possible architecture:
 
-The frontend must not calculate the authoritative amount. It can display server-provided metadata, but the backend recalculates everything before paying.
+- `CampaignFactory` creates campaign escrow contracts for companies.
+- Each `CampaignEscrow` stores requester, budget, token, reward rules, expiration, and refund policy.
+- Companies deposit WLD before tasks go live.
+- Sentia's backend keeps the task UX, matching, validation, anti-fraud checks, and quality review in Supabase.
+- After validated work, the backend or an attester service submits payout batches against the campaign escrow.
+- The escrow releases WLD to workers and records paid task or earning hashes on-chain.
+- Expired unused funds can be refunded to the company according to campaign rules.
+- Higher-value campaigns can require multisig approval, optimistic challenge windows, or an oracle/attestation layer before payout.
 
-### 7. Security Rules
+In that model, Sentia's backend becomes the orchestrator and attester of off-chain work, while contracts hold requester funds, enforce budget boundaries, prevent double payouts, and make refunds/audits explicit. The current reward vault is a practical first step toward that system: it proves the worker payout rail and on-chain duplicate protection without requiring the full requester escrow surface during the hackathon.
 
-Backend must enforce:
-
-- authenticated user only
-- verified human / eligible user only
-- signer address equals stored wallet address
-- wallet address is valid and non-zero
-- nonce matches current `users.claim_nonce`
-- deadline not expired
-- message equals backend rebuilt message exactly
-- earnings belong to the user
-- earnings are currently `pending`
-- total amount equals the sum of DB reward amounts
-- vault address and chain ID match environment
-- payout private key is never exposed to the client
-
-Contract enforces:
-
-- only owner can pay
-- no duplicate payout for the same `earningIdHash`
-- no zero worker
-- no zero amount
-- WLD transfer must succeed
-
-### 8. Failure Handling
-
-Common failures and handling:
-
-| Failure | Handling |
-| --- | --- |
-| User rejects signature | Keep earnings `pending`; show cancelled state. |
-| Signature invalid | Return 401/400; keep earnings `pending`. |
-| Nonce mismatch | Return conflict; client should fetch a new intent. |
-| No pending earnings | Return empty claim result; no signature needed. |
-| Vault underfunded | Mark processing earnings `failed` or revert to `pending`; store error. |
-| RPC timeout before receipt | Store tx hash if known; add reconciliation job/manual check. |
-| Contract `AlreadyPaid()` | Treat as suspicious; check DB and vault event state before retrying. |
-
-For demo reliability, the vault should be funded with more WLD than the expected total demo payouts.
-
-### 9. Deployment Steps
-
-1. Add Solidity tooling, preferably Foundry or Hardhat.
-2. Implement `SentiaRewardVault.sol` with no `fund()` function.
-3. Add a deploy script for World Chain mainnet.
-4. Deploy with constructor args:
-
-```txt
-wldToken = 0x2cfc85d8e48f8eab294be644d9e25c3030863003
-initialOwner = payout backend wallet address
-```
-
-5. Save deployed address as `SENTIA_VAULT_ADDRESS`.
-6. Manually transfer a small amount of WLD to the vault address.
-7. Confirm `balance()` returns the expected WLD amount.
-8. Add backend env vars locally and in Vercel.
-9. Run database migrations.
-10. Test one claim from a real World Wallet.
-11. Verify transaction on Worldscan.
-12. Test duplicate claim behavior.
-
-### 10. Implementation Order
-
-Recommended sequence:
-
-1. Add DB migration for payout fields and `users.claim_nonce`.
-2. Add vault ABI in `lib/contracts/sentiaRewardVaultAbi.ts`.
-3. Add claim-message helpers in `lib/earnings/claim-message.ts`.
-4. Add backend signature verification helper using `verifyMessage`.
-5. Add `GET /api/earnings/claim/intent`.
-6. Add `SentiaRewardVault.sol` and deploy script.
-7. Deploy vault and fund it manually with WLD.
-8. Add `lib/payouts/world-chain-vault.ts`.
-9. Upgrade `POST /api/earnings/claim` to verify signature and execute payouts.
-10. Update Earnings UI to call intent, sign message, submit claim, and show tx links.
-11. Add a small admin/debug check for vault balance if time allows.
-12. Run build and test a full claim end-to-end.
-
-### 11. Acceptance Criteria
-
-The implementation is complete when:
-
-- A verified user can complete a task and receive a pending earning.
-- The Earnings tab shows a claim button for pending WLD.
-- Tapping claim opens a World App EIP-191 signature prompt.
-- The backend verifies the signature against the stored wallet address.
-- The backend calls `SentiaRewardVault.payout(...)` on World Chain.
-- The user receives WLD in their World Wallet.
-- The earning is marked `paid` with `payout_tx_hash`, `recipient_wallet`, `chain_id`, `payout_contract_address`, and `paid_at`.
-- The UI links to the Worldscan transaction.
-- Re-clicking claim does not pay the same earning again.
-
-### 12. Pitch Summary
-
-For the hackathon, describe this as:
-
-> Sentia uses World ID to verify that workers are real humans, then records their task earnings in a backend ledger. When a worker claims, they sign an EIP-191 authorization in World App. Sentia verifies the signature server-side and releases WLD from a pre-funded World Chain reward vault. The vault provides public proof of funds, on-chain payout events, and duplicate payout protection while keeping task validation off-chain for speed and flexibility.
